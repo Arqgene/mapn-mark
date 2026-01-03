@@ -1,0 +1,66 @@
+name: pipeline
+channels:
+  - conda-forge
+  - bioconda
+  - bioconda/label/q2-2024.2
+  - defaults
+
+dependencies:
+  # Core
+  - python=3.12
+  - pip
+
+  # Python scientific stack
+  - numpy
+  - matplotlib
+  - pillow
+  - joblib
+  - pymongo
+  - simplejson
+  - python-dateutil
+  - six
+  - sniffio
+  - unicodedata2
+  - packaging
+  - cycler
+  - kiwisolver
+  - pyparsing
+  - munkres
+
+  # Bioinformatics – sequencing / assembly
+  - flye
+  - porechop
+  - filtlong
+  - minimap2
+  - racon
+  - fastqc
+  - quast
+  - blast
+  - seqkit
+  - sra-tools
+
+  # Annotation / analysis
+  - prokka
+  - prodigal
+  - barrnap
+  - hmmer
+  - infernal
+  - mafft
+  - muscle
+  - clustalo
+  - clustalw
+  - kalign2
+  - t-coffee
+  - fasttree
+  - raxml
+  - phylip
+
+  # Phylogenetics / alignment utilities
+  - dendropy
+  - pasta
+  - prank
+  - probcons
+  - famsa
+
+  # Optional but present in your env
+  - openjdk

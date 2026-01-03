@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MapNMark</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='index_styles.css') }}">
+    <style>
+        /* Chatbot Styles */
+        .chatbot-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9998;
+            width: 350px;
+            max-width: 90vw;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .chatbot-toggle {
+            background: linear-gradient(135deg, rgba(102, 252, 241, 0.9), rgba(45, 212, 191, 0.8));
+            border: 2px solid rgba(102, 252, 241, 0.5);
+            color: #0f172a;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.5em;
+            box-shadow: 0 8px 25px rgba(102, 252, 241, 0.4);
+            transition: all 0.3s ease;
+            margin-left: auto;
+            margin-right: 0;
+        }
+
+        .chatbot-toggle:hover {
+            transform: scale(1.1) rotate(5deg);
+            box-shadow: 0 12px 35px rgba(102, 252, 241, 0.6);
+            background: linear-gradient(135deg, rgba(102, 252, 241, 1), rgba(45, 212, 191, 0.9));
+        }
+
+        .chatbot-toggle.active {
+            transform: rotate(45deg);
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.9), rgba(220, 38, 38, 0.8));
+            border-color: rgba(239, 68, 68, 0.5);
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+        }
+
+        .chatbot-window {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(15px);
+            border: 2px solid rgba(102, 252, 241, 0.3);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            display: none;
+            flex-direction: column;
+            height: 500px;
+            max-height: 70vh;
+            overflow: hidden;
+            animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .chatbot-window.active {
+            display: flex;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .chatbot-header {
+            background: linear-gradient(135deg, rgba(102, 252, 241, 0.2), rgba(45, 212, 191, 0.1));
+            border-bottom: 2px solid rgba(102, 252, 241, 0.3);
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chatbot-title {
+            color: #66fcf1;
+            font-weight: 700;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chatbot-close {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.2em;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .chatbot-close:hover {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            transform: rotate(90deg);
+        }
+
+        .chatbot-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .chatbot-body::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chatbot-body::-webkit-scrollbar-track {
+            background: rgba(102, 252, 241, 0.1);
+            border-radius: 3px;
+        }
+
+        .chatbot-body::-webkit-scrollbar-thumb {
+            background: rgba(102, 252, 241, 0.3);
+            border-radius: 3px;
+        }
+
+        .message {
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            line-height: 1.5;
+            font-size: 0.95em;
+            animation: messageSlide 0.3s ease;
+        }
+
+        @keyframes messageSlide {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .user-message {
+            background: linear-gradient(135deg, rgba(102, 252, 241, 0.3), rgba(45, 212, 191, 0.2));
+            border: 1px solid rgba(102, 252, 241, 0.4);
+            color: #66fcf1;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .bot-message {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            color: #e2e8f0;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+
+        .bot-message.thinking {
+            opacity: 0.7;
+            font-style: italic;
+        }
+
+        .tool-tip {
+            display: inline-block;
+            background: rgba(102, 252, 241, 0.2);
+            color: #66fcf1;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.85em;
+            margin: 0 5px;
+            border: 1px solid rgba(102, 252, 241, 0.3);
+        }
+
+        .chatbot-footer {
+            border-top: 2px solid rgba(102, 252, 241, 0.2);
+            padding: 15px 20px;
+            display: flex;
+            gap: 10px;
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        .chatbot-input {
+            flex: 1;
+            background: rgba(30, 41, 59, 0.7);
+            border: 2px solid rgba(102, 252, 241, 0.2);
+            border-radius: 12px;
+            color: #e2e8f0;
+            padding: 12px 16px;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+        }
+
+        .chatbot-input:focus {
+            outline: none;
+            border-color: rgba(102, 252, 241, 0.5);
+            box-shadow: 0 0 0 3px rgba(102, 252, 241, 0.1);
+        }
+
+        .chatbot-input::placeholder {
+            color: #94a3b8;
+        }
+
+        .chatbot-send {
+            background: linear-gradient(135deg, rgba(102, 252, 241, 0.3), rgba(45, 212, 191, 0.2));
+            border: 2px solid rgba(102, 252, 241, 0.4);
+            color: #66fcf1;
+            border-radius: 12px;
+            padding: 12px 20px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 80px;
+            justify-content: center;
+        }
+
+        .chatbot-send:hover:not(:disabled) {
+            background: linear-gradient(135deg, rgba(102, 252, 241, 0.4), rgba(45, 212, 191, 0.3));
+            border-color: #66fcf1;
+            transform: translateY(-2px);
+        }
+
+        .chatbot-send:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .quick-questions {
+            padding: 15px 20px;
+            background: rgba(30, 41, 59, 0.5);
+            border-top: 1px solid rgba(102, 252, 241, 0.1);
+        }
+
+        .quick-questions-title {
+            color: #94a3b8;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .quick-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .quick-btn {
+            background: rgba(102, 252, 241, 0.1);
+            border: 1px solid rgba(102, 252, 241, 0.2);
+            color: #66fcf1;
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: calc(50% - 4px);
+            text-align: center;
+        }
+
+        .quick-btn:hover {
+            background: rgba(102, 252, 241, 0.2);
+            border-color: rgba(102, 252, 241, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 10px 16px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #66fcf1;
+            border-radius: 50%;
+            opacity: 0.6;
+            animation: typingBounce 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typingBounce {
+
+            0%,
+            60%,
+            100% {
+                transform: translateY(0);
+                opacity: 0.6;
+            }
+
+            30% {
+                transform: translateY(-10px);
+                opacity: 1;
+            }
+        }
+
+        /* Welcome message */
+        .welcome-message {
+            text-align: center;
+            padding: 20px;
+            background: rgba(102, 252, 241, 0.1);
+            border-radius: 12px;
+            border: 1px solid rgba(102, 252, 241, 0.2);
+            margin-bottom: 15px;
+        }
+
+        .welcome-title {
+            color: #66fcf1;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .welcome-text {
+            color: #cbd5e1;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .chatbot-container {
+                width: 320px;
+                right: 10px;
+                bottom: 10px;
+            }
+
+            .chatbot-window {
+                height: 450px;
+            }
+
+            .chatbot-toggle {
+                width: 50px;
+                height: 50px;
+                font-size: 1.3em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .chatbot-container {
+                width: calc(100vw - 40px);
+                right: 20px;
+                bottom: 80px;
+            }
+
+            .chatbot-window {
+                height: 400px;
+                max-height: 60vh;
+            }
+
+            .quick-buttons {
+                flex-direction: column;
+            }
+
+            .quick-btn {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- User Info (Fixed Top Right) -->
+    {% if current_user %}
+    <div class="user-info-container">
+        <div class="user-greeting">
+            <span>👤</span>
+            <span>Welcome, {{ current_name }}</span>
+        </div>
+        <a href="{{ url_for('diagnostics') }}" class="dashboard-btn"
+            style="background: rgba(0, 243, 255, 0.1); border-color: #00f3ff; color: #00f3ff;">
+            🖥️ Sys Check
+        </a>
+        <a href="{{ url_for('my_runs') }}" class="dashboard-btn">
+            📂 My Runs
+        </a>
+        <a href="{{ url_for('logout') }}" class="logout-btn">
+            🚪 Logout
+        </a>
+    </div>
+    {% else %}
+    <div class="user-info-container">
+        <div class="user-greeting">
+            <span>👤</span>
+            <span>Guest User</span>
+        </div>
+        <a href="{{ url_for('login') }}" class="login-btn-small">
+            🔐 Login
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Flash Messages -->
+    <div class="flash-messages" id="flashMessages">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="flash-message flash-{{ category }}" data-autohide="true">
+            {% if category == 'success' %}
+            <span>✅</span>
+            {% elif category == 'error' %}
+            <span>❌</span>
+            {% else %}
+            <span>ℹ️</span>
+            {% endif %}
+            <span>{{ message }}</span>
+            <button class="close-flash" onclick="removeFlashMessage(this)">✕</button>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Goofy Elements -->
+    <div class="goofy-element goofy-1">🦠</div>
+    <div class="goofy-element goofy-2">🧬</div>
+    <div class="goofy-element goofy-3">⚡</div>
+
+    <div class="dna-background">
+        <div class="dna-strand"></div>
+        <div class="dna-strand"></div>
+        <div class="dna-strand"></div>
+        <div class="dna-strand"></div>
+        <div class="dna-strand"></div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1 class="lab-title">🧬 MapNMark</h1>
+            <p class="lab-subtitle">Advanced Nanopore Sequencing, Microbiome & Gene Analysis Pipeline</p>
+            <div class="lab-badge">⚡ QUICK ANALYSIS</div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="tabs-container">
+            <div class="tab-buttons">
+                <button class="tab-btn active" data-tab="nanopore-tab">
+                    🧬 Analysis tools
+                </button>
+                <button class="tab-btn coming-soon" data-tab="qiime-tab">
+                    🦠 QIIME 2 Microbiome
+                </button>
+                <button class="tab-btn coming-soon" data-tab="gene-tab">
+                    🧬 Unique Gene Identifier
+                </button>
+            </div>
+        </div>
+
+        <!-- Nanopore Tab Content -->
+        <div id="nanopore-tab" class="tab-content active">
+            <div class="form-container">
+                {% if error %}
+                <div class="error">
+                    <strong>❌ ANALYSIS ERROR:</strong> {{ error }}
+                </div>
+                {% endif %}
+
+                <h2 class="section-title">🔬 Sample Configuration</h2>
+
+                <form method="POST" enctype="multipart/form-data" id="nanoporeForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="input_fastq">
+                                📊 Raw Data(FASTQ)
+                                <span class="tooltip"
+                                    data-tooltip="Upload your nanopore sequencing FASTQ file">🔍</span>
+                            </label>
+                            <div class="input-wrapper">
+                                <span class="input-icon biotech-icons">🧬</span>
+                                <input type="file" id="input_fastq" name="input_fastq" accept=".fastq,.fq" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="genome_size">
+                                🔬 Expected Genome Size
+                                <span class="tooltip"
+                                    data-tooltip="Estimated genome size (e.g., 5m = 5Million)">🔍</span>
+                            </label>
+                            <div class="input-wrapper">
+                                <span class="input-icon biotech-icons">⚗️</span>
+                                <input type="text" id="genome_size" name="genome_size" required placeholder="5"
+                                    value="1m" pattern="[0-9]+[mkgMKG]">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="threads">
+                                ⚡ Processing Threads
+                                <span class="tooltip"
+                                    data-tooltip="Number of CPU cores for parallel processing">🔍</span>
+                            </label>
+                            <div class="input-wrapper">
+                                <span class="input-icon biotech-icons">🖥️</span>
+                                <input type="number" id="threads" name="threads" required min="1" max="128"
+                                    placeholder="16" value="8">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="min_length">
+                                📏 Minimum Read Length (bp)
+                                <span class="tooltip" data-tooltip="Filter reads shorter than this length">🔍</span>
+                            </label>
+                            <div class="input-wrapper">
+                                <span class="input-icon biotech-icons">📐</span>
+                                <input type="number" id="min_length" name="min_length" required min="100" max="50000"
+                                    placeholder="1000" value="1000">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="keep_percent">
+                                📊 Quality Retention (%)
+                                <span class="tooltip"
+                                    data-tooltip="Percentage of highest quality reads to retain">🔍</span>
+                            </label>
+                            <div class="input-wrapper">
+                                <span class="input-icon biotech-icons">📈</span>
+                                <input type="number" id="keep_percent" name="keep_percent" required min="10" max="100"
+                                    placeholder="90" value="90">
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2 class="section-title">🧰 Pipeline Tools</h2>
+
+                    <!-- Modern Tools Selection -->
+                    <div class="tools-selection-container">
+                        <div class="tools-header">
+                            <div class="tools-title">Select Analysis Modules</div>
+                            <div class="tools-toggle">
+                                <button type="button" class="toggle-btn active" id="nanoporeSelectAllBtn">Select
+                                    All</button>
+                                <button type="button" class="toggle-btn" id="nanoporeDeselectAllBtn">Deselect
+                                    All</button>
+                            </div>
+                        </div>
+
+                        <div class="tools-grid">
+                            <!-- Porechop -->
+                            <label class="tool-card selected" data-tool="porechop">
+                                <input type="checkbox" name="tools" value="porechop" class="nanopore-tool-checkbox"
+                                    checked>
+                                <span class="tool-icon" style="color: #00bfff;">✂️</span>
+                                <div class="tool-name">
+                                    Porechop
+                                    <span class="tool-tag">ESSENTIAL</span>
+                                </div>
+                                <div class="tool-desc">
+                                    Adapter trimming and barcode demultiplexing for nanopore reads
+                                </div>
+                                <div class="tool-meta">
+                                    <div class="tool-deps">⚡ Fast processing</div>
+                                </div>
+                            </label>
+
+                            <!-- Filtlong -->
+                            <label class="tool-card selected" data-tool="filtlong">
+                                <input type="checkbox" name="tools" value="filtlong" class="nanopore-tool-checkbox"
+                                    checked>
+                                <span class="tool-icon" style="color: #00ff7f;">🔍</span>
+                                <div class="tool-name">
+                                    Filtlong
+                                    <span class="tool-tag">ESSENTIAL</span>
+                                </div>
+                                <div class="tool-desc">
+                                    Quality filtering based on read length and quality scores
+                                </div>
+                                <div class="tool-meta">
+                                    <div class="tool-deps">📊 Quality control</div>
+                                </div>
+                            </label>
+
+                            <!-- Flye -->
+                            <label class="tool-card selected" data-tool="flye">
+                                <input type="checkbox" name="tools" value="flye" class="nanopore-tool-checkbox" checked>
+                                <span class="tool-icon" style="color: #9333ea;">🧬</span>
+                                <div class="tool-name">
+                                    Flye
+                                    <span class="tool-tag">CORE</span>
+                                </div>
+                                <div class="tool-desc">
+                                    De novo genome assembler for long error-prone reads
+                                </div>
+                                <div class="tool-meta">
+                                    <div class="tool-deps">🧬 Assembly</div>
+                                </div>
+                            </label>
+
+                            <!-- Minimap2 -->
+                            <label class="tool-card selected" data-tool="minimap2">
+                                <input type="checkbox" name="tools" value="minimap2" class="nanopore-tool-checkbox"
+                                    checked>
+                                <span class="tool-icon" style="color: #33ea5e;">🗺️</span>
+                                <div class="tool-name">
+                                    Minimap2
+                                    <span class="tool-tag">CORE</span>
+                                </div>
+                                <div class="tool-desc">
+                                    mapping and alignment between collections of DNA sequences
+                                </div>
+                                <div class="tool-meta">
+                                    <div class="tool-deps">Mapping</div>
+                                </div>
+                            </label>
+
+                            <!-- Racon -->
+                            <label class="tool-card selected" data-tool="racon">
+                                <input type="checkbox" name="tools" value="racon" class="nanopore-tool-checkbox"
+                                    checked>
+                                <span class="tool-icon" style="color: #ef4444;">✨</span>
+                                <div class="tool-name">
+                                    Racon
+                                    <span class="tool-tag">ESSENTIAL</span>
+                                </div>
+                                <div class="tool-desc">
+                                    Ultra-fast consensus module for correcting contigs
+                                </div>
+                                <div class="tool-meta">
+                                    <div class="tool-deps">⚡ Fast polishing</div>
+                                </div>
+                            </label>
+
+                            <!-- FastQC -->
+                            <label class="tool-card selected" data-tool="fastqc">
+                                <input type="checkbox" name="tools" value="fastqc" class="nanopore-tool-checkbox"
+                                    checked>
+                                <span class="tool-icon" style="color: #06b6d4;">📊</span>
+                                <div class="tool-name">
+                                    FastQC
+                                </div>
+                                <div class="tool-desc">
+                                    Quality control tool for high throughput sequence data
+                                </div>
+                                <div class="tool-meta">
+                                    <div class="tool-deps">📈 Quality reports</div>
+                                </div>
+                            </label>
+
+                            <!-- Prokka -->
+                            <label class="tool-card selected" data-tool="prokka">
+                                <input type="checkbox" name="tools" value="prokka" class="nanopore-tool-checkbox"
+                                    checked>
+                                <span class="tool-icon" style="color: #10b981;">🧫</span>
+                                <div class="tool-name">
+                                    Prokka
+                                    <span class="tool-tag">ANNOTATION</span>
+                                </div>
+                                <div class="tool-desc">
+                                    Rapid prokaryotic genome annotation pipeline
+                                </div>
+                                <div class="tool-meta">
+                                    <div class="tool-deps">🏷️ Annotation</div>
+                                </div>
+                            </label>
+
+                            <!-- QUAST -->
+                            <label class="tool-card selected" data-tool="quast">
+                                <input type="checkbox" name="tools" value="quast" class="nanopore-tool-checkbox"
+                                    checked>
+                                <span class="tool-icon" style="color: #06b6d4;">📊</span>
+                                <div class="tool-name">
+                                    QUAST
+                                    <span class="tool-tag">QC</span>
+                                </div>
+                                <div class="tool-desc">
+                                    Quality assessment tool for genome assemblies
+                                </div>
+                                <div class="tool-meta">
+                                    <div class="tool-deps">📈 Statistics</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Hidden input to store the comma-separated tools -->
+                        <input type="hidden" name="tools_list" id="nanoporeToolsInput">
+                    </div>
+
+                    <div class="submit-container">
+                        <button type="submit" class="submit-btn" id="nanoporeSubmit">
+                            🚀 INITIATE ANALYSIS
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="pipeline-info">
+                <h3>🔬 Analysis Workflow</h3>
+                <div class="tech-specs">
+                    <h4>⚙️ Technical Specifications</h4>
+                    <div class="spec-grid">
+                        <div class="spec-item">
+                            <span class="spec-value">ONT</span>
+                            <span class="spec-label">Platform</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-value">LONG</span>
+                            <span class="spec-label">Read Type</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-value">DE NOVO</span>
+                            <span class="spec-label">Assembly</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-value">HQ</span>
+                            <span class="spec-label">Quality</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- QIIME 2 Tab Content -->
+        <div id="qiime-tab" class="tab-content"></div>
+
+        <!-- Unique Gene Identifier Tab Content -->
+        <div id="gene-tab" class="tab-content"></div>
+    </div>
+
+    <!-- Chatbot Container -->
+    <div class="chatbot-container">
+        <div class="chatbot-toggle" id="chatbotToggle">💬</div>
+        <div class="chatbot-window" id="chatbotWindow">
+            <div class="chatbot-header">
+                <div class="chatbot-title">
+                    <span>🤖</span>
+                    MapNMark Assistant
+                </div>
+                <button class="chatbot-close" id="chatbotClose">✕</button>
+            </div>
+
+            <div class="chatbot-body" id="chatbotBody">
+                <!-- Welcome message -->
+                <div class="welcome-message">
+                    <div class="welcome-title">👋 Hello! I'm your MapNMark Assistant</div>
+                    <div class="welcome-text">
+                        I can help you understand our bioinformatics tools,
+                        suggest analysis pipelines, or answer questions about
+                        nanopore sequencing. Try asking me something!
+                    </div>
+                </div>
+
+                <!-- Quick questions section -->
+                <div class="quick-questions">
+                    <div class="quick-questions-title">💡 Quick Questions:</div>
+                    <div class="quick-buttons">
+                        <button class="quick-btn" onclick="askQuickQuestion('What is Porechop used for?')">What is
+                            Porechop?</button>
+                        <button class="quick-btn" onclick="askQuickQuestion('How to choose genome size?')">Genome Size
+                            Help</button>
+                        <button class="quick-btn"
+                            onclick="askQuickQuestion('Recommended tools for beginners?')">Beginner Tools</button>
+                        <button class="quick-btn" onclick="askQuickQuestion('What does Flye do?')">Explain Flye</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chatbot-footer">
+                <input type="text" class="chatbot-input" id="chatbotInput"
+                    placeholder="Ask about tools, analysis, or workflows..."
+                    onkeypress="handleChatInputKeypress(event)">
+                <button class="chatbot-send" id="chatbotSend" onclick="sendChatMessage()">
+                    <span>Send</span>
+                    <span>➤</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- QIIME 2 Coming Soon Overlay -->
+    <div id="qiimeOverlay" class="coming-soon-overlay">
+        <div class="coming-soon-container">
+            <button class="close-overlay" onclick="closeOverlay('qiimeOverlay')">✕</button>
+            <div class="coming-soon-header">
+                <div class="coming-soon-icon">🦠</div>
+                <h1 class="coming-soon-title">Microbiome Magic</h1>
+                <p class="coming-soon-subtitle">
+                    Dive deep into microbial communities with our powerful QIIME 2 integration.
+                    <br>
+                    <em>Unlocking the secrets of your microbiome data...</em>
+                </p>
+                <div class="status-badge">✨ BUILDING IN PROGRESS</div>
+
+                <!-- Progress Bar -->
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gene Identifier Coming Soon Overlay -->
+    <div id="geneOverlay" class="coming-soon-overlay">
+        <div class="coming-soon-container">
+            <button class="close-overlay" onclick="closeOverlay('geneOverlay')">✕</button>
+            <div class="coming-soon-header">
+                <div class="coming-soon-icon">🧬</div>
+                <h1 class="coming-soon-title">Gene Explorer Pro</h1>
+                <p class="coming-soon-subtitle">
+                    Uncover unique genetic signatures with our advanced gene identification system.
+                    <br>
+                    <em>Mapping the blueprint of life, one gene at a time...</em>
+                </p>
+                <div class="status-badge">⚡ CRAFTING EXCELLENCE</div>
+
+                <!-- Progress Bar -->
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-card" id="loadingCard">
+            <div class="spinner"></div>
+            <h2 id="loadingTitle">🧬 Pipeline Running</h2>
+            <p id="loadingStatus">Initializing analysis…</p>
+            <div class="loading-subtext">
+                <div>⏳ This may take several minutes depending on dataset size</div>
+                <div>📊 Processing in background...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Chatbot functionality
+        let isChatbotOpen = false;
+        let isProcessingMessage = false;
+
+        const chatbotToggle = document.getElementById('chatbotToggle');
+        const chatbotWindow = document.getElementById('chatbotWindow');
+        const chatbotClose = document.getElementById('chatbotClose');
+        const chatbotBody = document.getElementById('chatbotBody');
+        const chatbotInput = document.getElementById('chatbotInput');
+        const chatbotSend = document.getElementById('chatbotSend');
+
+        // Toggle chatbot window
+        chatbotToggle.addEventListener('click', () => {
+            isChatbotOpen = !isChatbotOpen;
+            if (isChatbotOpen) {
+                chatbotWindow.classList.add('active');
+                chatbotToggle.classList.add('active');
+                chatbotInput.focus();
+
+                // Scroll to bottom
+                setTimeout(() => {
+                    chatbotBody.scrollTop = chatbotBody.scrollHeight;
+                }, 100);
+            } else {
+                chatbotWindow.classList.remove('active');
+                chatbotToggle.classList.remove('active');
+            }
+        });
+
+        // Close chatbot
+        chatbotClose.addEventListener('click', () => {
+            isChatbotOpen = false;
+            chatbotWindow.classList.remove('active');
+            chatbotToggle.classList.remove('active');
+        });
+
+        // Handle enter key in input
+        function handleChatInputKeypress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendChatMessage();
+            }
+        }
+
+        // Send message
+        async function sendChatMessage() {
+            const message = chatbotInput.value.trim();
+            if (!message || isProcessingMessage) return;
+
+            // Add user message
+            addMessage(message, 'user');
+            chatbotInput.value = '';
+            chatbotSend.disabled = true;
+            isProcessingMessage = true;
+
+            // Show typing indicator
+            showTypingIndicator();
+
+            try {
+                const response = await fetch("/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: message })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // Remove typing indicator
+                removeTypingIndicator();
+
+                // Add bot message
+                addMessage(data.reply, 'bot');
+
+            } catch (error) {
+                console.error('Chat error:', error);
+                removeTypingIndicator();
+                addMessage("Sorry, I'm having trouble connecting. Please try again later.", 'bot');
+            } finally {
+                isProcessingMessage = false;
+                chatbotSend.disabled = false;
+                chatbotInput.focus();
+            }
+        }
+
+        // Add message to chat
+        function addMessage(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            messageDiv.innerHTML = formatMessageText(text);
+
+            chatbotBody.appendChild(messageDiv);
+
+            // Scroll to bottom
+            setTimeout(() => {
+                chatbotBody.scrollTop = chatbotBody.scrollHeight;
+            }, 100);
+        }
+
+        // Format message text (highlight tool names)
+        function formatMessageText(text) {
+            const toolNames = [
+                'Porechop', 'Filtlong', 'Flye', 'Minimap2', 'Racon',
+                'FastQC', 'Prokka', 'QUAST', 'QIIME', 'Gene Identifier'
+            ];
+
+            let formatted = text;
+            toolNames.forEach(tool => {
+                const regex = new RegExp(`\\b${tool}\\b`, 'gi');
+                formatted = formatted.replace(regex, `<span class="tool-tip">${tool}</span>`);
+            });
+
+            return formatted;
+        }
+
+        // Show typing indicator
+        function showTypingIndicator() {
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message bot-message thinking';
+            typingDiv.id = 'typingIndicator';
+            typingDiv.innerHTML = `
+                <div class="typing-indicator">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            `;
+
+            chatbotBody.appendChild(typingDiv);
+            chatbotBody.scrollTop = chatbotBody.scrollHeight;
+        }
+
+        // Remove typing indicator
+        function removeTypingIndicator() {
+            const typingDiv = document.getElementById('typingIndicator');
+            if (typingDiv) {
+                typingDiv.remove();
+            }
+        }
+
+        // Quick question function
+        function askQuickQuestion(question) {
+            chatbotInput.value = question;
+            sendChatMessage();
+        }
+
+        // Initialize chatbot
+        function initializeChatbot() {
+            // Add sample conversation if chat is empty
+            if (chatbotBody.children.length === 2) { // Only welcome and quick questions
+                addMessage("I'm here to help with bioinformatics questions! You can ask me about specific tools like <span class='tool-tip'>Porechop</span> or <span class='tool-tip'>Flye</span>, get analysis recommendations, or learn about nanopore sequencing best practices.", 'bot');
+            }
+        }
+
+        // Enhanced overlay functionality
+        let currentOverlay = null;
+
+        function showOverlay(overlayId) {
+            if (currentOverlay) {
+                closeOverlay(currentOverlay);
+            }
+            const overlay = document.getElementById(overlayId);
+            if (overlay) {
+                overlay.classList.add('active');
+                currentOverlay = overlayId;
+                document.body.style.overflow = 'hidden';
+
+                // Start countdown for QIIME overlay
+                if (overlayId === 'qiimeOverlay') {
+                    startQiimeCountdown();
+                }
+
+                // Fun sound effect
+                playFunSound();
+            }
+        }
+
+        function closeOverlay(overlayId) {
+            const overlay = document.getElementById(overlayId);
+            if (overlay) {
+                overlay.classList.remove('active');
+                if (currentOverlay === overlayId) {
+                    currentOverlay = null;
+                }
+                document.body.style.overflow = '';
+            }
+        }
+
+        // Play fun sound
+        function playFunSound() {
+            // Create a fun beep sound
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.frequency.value = 523.25; // C5
+                oscillator.type = 'sine';
+
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.5);
+            } catch (e) {
+                // Audio not supported, silently fail
+            }
+        }
+
+        // Countdown timer for QIIME
+        function startQiimeCountdown() {
+            const launchDate = new Date('December 31, 2024 23:59:59').getTime();
+
+            function updateCountdown() {
+                const now = new Date().getTime();
+                const distance = launchDate - now;
+
+                if (distance < 0) {
+                    document.getElementById('qiimeLaunchDate').textContent = 'LAUNCHED! 🎉';
+                    document.getElementById('qiimeCountdown').innerHTML =
+                        '<div style="color: #66fcf1; font-size: 2em; font-weight: 700;">🎉 LAUNCHED! 🎉</div>';
+                    return;
+                }
+
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                document.getElementById('qiimeDays').textContent = days.toString().padStart(2, '0');
+                document.getElementById('qiimeHours').textContent = hours.toString().padStart(2, '0');
+                document.getElementById('qiimeMinutes').textContent = minutes.toString().padStart(2, '0');
+                document.getElementById('qiimeSeconds').textContent = seconds.toString().padStart(2, '0');
+            }
+
+            updateCountdown();
+            setInterval(updateCountdown, 1000);
+        }
+
+        // Flash message auto-hide function
+        function setupFlashMessages() {
+            const flashMessages = document.querySelectorAll('.flash-message[data-autohide="true"]');
+
+            flashMessages.forEach(message => {
+                setTimeout(() => {
+                    message.classList.add('fade-out');
+                    setTimeout(() => {
+                        if (message.parentNode) {
+                            message.remove();
+                        }
+                    }, 500);
+                }, 5000);
+            });
+        }
+
+        // Remove flash message manually
+        function removeFlashMessage(button) {
+            const message = button.closest('.flash-message');
+            message.classList.add('fade-out');
+            setTimeout(() => {
+                if (message.parentNode) {
+                    message.remove();
+                }
+            }, 500);
+        }
+
+        // Enhanced tab switching with overlay support
+        function initializeTabs() {
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tabId = button.getAttribute('data-tab');
+
+                    // Remove active class from all buttons and contents
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabContents.forEach(content => content.classList.remove('active'));
+
+                    // Add active class to clicked button and corresponding content
+                    button.classList.add('active');
+
+                    // Special handling for coming soon tabs
+                    if (button.classList.contains('coming-soon')) {
+                        const overlayId = tabId.includes('qiime') ? 'qiimeOverlay' : 'geneOverlay';
+                        showOverlay(overlayId);
+                    } else {
+                        // Show regular content
+                        document.getElementById(tabId).classList.add('active');
+                        if (currentOverlay) {
+                            closeOverlay(currentOverlay);
+                        }
+                    }
+                });
+            });
+        }
+
+        // Enhanced notify functionality
+        function notifyMe(feature) {
+            const featureNames = {
+                'qiime': 'QIIME 2 Microbiome Analysis 🦠',
+                'gene': 'Unique Gene Identifier 🧬'
+            };
+
+            const features = {
+                'qiime': ['16S/ITS Analysis', 'DADA2 Denoising', 'Taxonomic Classification', 'Interactive Dashboards'],
+                'gene': ['Gene Clustering', 'Orthology Analysis', 'Domain Prediction', 'Unique Gene ID']
+            };
+
+            const email = prompt(
+                `📧 Enter your email to get notified when ${featureNames[feature]} is ready!\n\n` +
+                `✨ Coming Features:\n` +
+                features[feature].map(f => `• ${f}`).join('\n') +
+                `\n\n📅 Estimated Launch: ${feature === 'qiime' ? 'Q4 2024' : 'Early 2025'}`
+            );
+
+            if (email) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (emailRegex.test(email)) {
+                    const confirmation = confirm(
+                        `🎉 Awesome! We'll notify you at:\n\n📧 ${email}\n\n` +
+                        `Get ready for ${featureNames[feature]}!\n\n` +
+                        `Click OK to add a fun emoji to your notification:`
+                    );
+
+                    let emoji = '✨';
+                    if (confirmation) {
+                        const emojis = ['🚀', '🎯', '⚡', '🌟', '🔥', '💫'];
+                        emoji = emojis[Math.floor(Math.random() * emojis.length)];
+                    }
+
+                    alert(`${emoji} Notification request registered! ${emoji}\n\nWe'll email you as soon as ${featureNames[feature]} is live!`);
+
+                    // Save to localStorage
+                    const notifications = JSON.parse(localStorage.getItem('mapnmark_notifications') || '[]');
+                    notifications.push({
+                        feature,
+                        email,
+                        date: new Date().toISOString(),
+                        emoji: emoji
+                    });
+                    localStorage.setItem('mapnmark_notifications', JSON.stringify(notifications));
+
+                    // Fun animation
+                    const btn = event.target;
+                    const originalHTML = btn.innerHTML;
+                    btn.innerHTML = `✅ Notification Set! ${emoji}`;
+                    btn.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(5, 150, 105, 0.2))';
+                    btn.style.borderColor = '#10b981';
+
+                    setTimeout(() => {
+                        btn.innerHTML = originalHTML;
+                        btn.style.background = '';
+                        btn.style.borderColor = '';
+                    }, 2000);
+
+                } else {
+                    alert('⚠️ Please enter a valid email address. Try again! 📧');
+                }
+            }
+        }
+
+        // Initialize Nanopore Tools Selection
+        function initializeNanoporeTools() {
+            const nanoporeToolCards = document.querySelectorAll('#nanopore-tab .tool-card');
+
+            nanoporeToolCards.forEach(card => {
+                const checkbox = card.querySelector('.nanopore-tool-checkbox');
+
+                if (!checkbox) return;
+
+                // Set initial visual state
+                if (checkbox.checked) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+
+                // Handle card click
+                card.addEventListener('click', function (e) {
+                    const checkbox = this.querySelector('.nanopore-tool-checkbox');
+                    if (!checkbox) return;
+
+                    // Toggle checkbox state
+                    const newState = !checkbox.checked;
+                    checkbox.checked = newState;
+
+                    // Update visual state
+                    if (newState) {
+                        this.classList.add('selected');
+                    } else {
+                        this.classList.remove('selected');
+                    }
+
+                    // Check dependencies
+                    checkToolDependencies(checkbox);
+
+                    updateNanoporeToggleButtons();
+                });
+            });
+
+            // Initialize toggle buttons
+            updateNanoporeToggleButtons();
+        }
+
+        // Check tool dependencies
+        function checkToolDependencies(checkbox) {
+            const toolName = checkbox.value;
+            const isChecked = checkbox.checked;
+
+            // If minimap2 is selected, automatically select filtlong and flye
+            if (toolName === 'minimap2' && isChecked) {
+                selectDependency('filtlong');
+                selectDependency('flye');
+            }
+
+            // If racon is selected, automatically select filtlong, flye, and minimap2
+            if (toolName === 'racon' && isChecked) {
+                selectDependency('filtlong');
+                selectDependency('flye');
+                selectDependency('minimap2');
+            }
+
+            // Helper function to select a dependency
+            function selectDependency(toolName) {
+                const depCheckbox = document.querySelector(`input[name="tools"][value="${toolName}"]`);
+                if (depCheckbox && !depCheckbox.checked) {
+                    depCheckbox.checked = true;
+                    const depCard = depCheckbox.closest('.tool-card');
+                    if (depCard) depCard.classList.add('selected');
+                }
+            }
+        }
+
+        // Update Nanopore toggle button states
+        function updateNanoporeToggleButtons() {
+            const checkboxes = Array.from(document.querySelectorAll('.nanopore-tool-checkbox'));
+            const selectAllBtn = document.getElementById('nanoporeSelectAllBtn');
+            const deselectAllBtn = document.getElementById('nanoporeDeselectAllBtn');
+
+            if (!selectAllBtn || !deselectAllBtn) return;
+
+            const allChecked = checkboxes.every(cb => cb.checked);
+            const allUnchecked = checkboxes.every(cb => !cb.checked);
+
+            if (allChecked) {
+                selectAllBtn.classList.add('active');
+                deselectAllBtn.classList.remove('active');
+            } else if (allUnchecked) {
+                selectAllBtn.classList.remove('active');
+                deselectAllBtn.classList.add('active');
+            } else {
+                selectAllBtn.classList.remove('active');
+                deselectAllBtn.classList.remove('active');
+            }
+        }
+
+        // Select all Nanopore tools
+        function selectAllNanoporeTools() {
+            document.querySelectorAll('.nanopore-tool-checkbox').forEach(checkbox => {
+                checkbox.checked = true;
+                const card = checkbox.closest('.tool-card');
+                if (card) card.classList.add('selected');
+            });
+            updateNanoporeToggleButtons();
+
+            // Fun animation
+            const btn = event.target;
+            btn.textContent = '✅ All Selected!';
+            setTimeout(() => {
+                btn.textContent = 'Select All';
+            }, 1000);
+        }
+
+        // Deselect all Nanopore tools
+        function deselectAllNanoporeTools() {
+            document.querySelectorAll('.nanopore-tool-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+                const card = checkbox.closest('.tool-card');
+                if (card) card.classList.remove('selected');
+            });
+            updateNanoporeToggleButtons();
+
+            // Fun animation
+            const btn = event.target;
+            btn.textContent = '❌ All Deselected!';
+            setTimeout(() => {
+                btn.textContent = 'Deselect All';
+            }, 1000);
+        }
+
+        // Form submission handler
+        document.getElementById("nanoporeForm")?.addEventListener("submit", function (e) {
+            {% if not current_user %}
+            e.preventDefault();
+            alert('⚠️ Please log in to start an analysis. Your results will be saved to your account.');
+            if (confirm('Would you like to go to the login page now?')) {
+                window.location.href = "{{ url_for('login') }}";
+            }
+            return false;
+            {% endif %}
+
+            const selected = Array.from(
+                document.querySelectorAll(".nanopore-tool-checkbox:checked")
+            ).map(cb => cb.value);
+
+            if (selected.length === 0) {
+                e.preventDefault();
+                alert('⚠️ Please select at least one tool for the nanopore analysis pipeline.');
+                return false;
+            }
+
+            // Check if minimap2 is selected without filtlong or flye
+            if (selected.includes("minimap2")) {
+                if (!selected.includes("filtlong") || !selected.includes("flye")) {
+                    e.preventDefault();
+                    alert('⚠️ minimap2 requires filtlong and flye to be selected for proper functionality.');
+                    return false;
+                }
+            }
+
+            // Check if racon is selected without filtlong, flye, or minimap2
+            if (selected.includes("racon")) {
+                if (!selected.includes("filtlong") || !selected.includes("flye") || !selected.includes("minimap2")) {
+                    e.preventDefault();
+                    alert('⚠️ racon requires filtlong, flye, and minimap2 to be selected for proper functionality.');
+                    return false;
+                }
+            }
+
+            document.getElementById("nanoporeToolsInput").value = selected.join(",");
+
+            // Show loading overlay
+            startLoading('nanopore');
+
+            return true;
+        });
+
+        // Loading overlay function
+        function startLoading(pipelineType) {
+            const overlay = document.getElementById("loadingOverlay");
+            const statusText = document.getElementById("loadingStatus");
+            const loadingTitle = document.getElementById("loadingTitle");
+
+            let steps = [];
+
+            if (pipelineType === 'nanopore') {
+                const selectedTools = Array.from(
+                    document.querySelectorAll(".nanopore-tool-checkbox:checked")
+                ).map(cb => cb.value);
+
+                if (selectedTools.includes("porechop")) steps.push("Adapter trimming");
+                if (selectedTools.includes("filtlong")) steps.push("Quality filtering");
+                if (selectedTools.includes("flye")) steps.push("Genome assembly");
+                if (selectedTools.includes("minimap2")) steps.push("Read mapping");
+                if (selectedTools.includes("racon")) steps.push("Consensus polishing");
+                if (selectedTools.includes("fastqc")) steps.push("Quality assessment");
+                if (selectedTools.includes("prokka")) steps.push("Genome annotation");
+                if (selectedTools.includes("quast")) steps.push("Assembly evaluation");
+
+                loadingTitle.textContent = "🧬 Pipeline Running";
+                statusText.textContent = "Initializing pipeline…";
+            }
+
+            let index = 0;
+
+            overlay.classList.add("show");
+
+            const interval = setInterval(() => {
+                if (index < steps.length) {
+                    statusText.textContent = `Running: ${steps[index]}…`;
+                    index++;
+                } else {
+                    statusText.textContent = "Finalizing genome assembly and analysis…";
+                    clearInterval(interval);
+                }
+            }, 2000);
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initialize chatbot
+            initializeChatbot();
+
+            // Setup flash message auto-hide
+            setupFlashMessages();
+
+            // Initialize tabs
+            initializeTabs();
+
+            // Initialize nanopore tools
+            initializeNanoporeTools();
+
+            // Set up event listeners for toggle buttons
+            const nanoporeSelectAllBtn = document.getElementById('nanoporeSelectAllBtn');
+            const nanoporeDeselectAllBtn = document.getElementById('nanoporeDeselectAllBtn');
+
+            if (nanoporeSelectAllBtn) {
+                nanoporeSelectAllBtn.addEventListener('click', selectAllNanoporeTools);
+            }
+
+            if (nanoporeDeselectAllBtn) {
+                nanoporeDeselectAllBtn.addEventListener('click', deselectAllNanoporeTools);
+            }
+
+            // Add fun hover effects to coming soon tabs
+            const comingSoonTabs = document.querySelectorAll('.tab-btn.coming-soon');
+            comingSoonTabs.forEach(tab => {
+                tab.addEventListener('mouseenter', function () {
+                    this.style.transform = 'translateY(-5px) scale(1.05)';
+                    this.style.boxShadow = '0 15px 30px rgba(139, 92, 246, 0.4)';
+                });
+
+                tab.addEventListener('mouseleave', function () {
+                    this.style.transform = '';
+                    this.style.boxShadow = '';
+                });
+            });
+
+            // Check login status with fun message
+            {% if not current_user %}
+            setTimeout(() => {
+                const messages = [
+                    "🔐 Psst... Want to save your analysis results?",
+                    "🧬 Guest mode is cool, but logged-in users get more goodies!",
+                    "⚡ Unlock full power - Login for advanced features!",
+                    "🎯 Your data deserves a home - Create an account!"
+                ];
+                const randomMsg = messages[Math.floor(Math.random() * messages.length)];
+
+                if (confirm(`${randomMsg}\n\nWould you like to go to the login page now?`)) {
+                    window.location.href = "{{ url_for('login') }}";
+                }
+            }, 3000);
+            {% endif %}
+        });
+
+        // Initialize on window load
+        window.addEventListener('load', function () {
+            if (document.getElementById('nanopore-tab')?.classList.contains('active')) {
+                updateNanoporeToggleButtons();
+            }
+        });
+    </script>
+</body>
+
+</html>

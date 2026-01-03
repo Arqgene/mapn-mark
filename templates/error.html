@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error {{ error_code }} | MapNMark</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles_index.css') }}">
+    <style>
+        .error-container {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .error-card {
+            background: rgba(26, 26, 46, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            max-width: 500px;
+            border: 1px solid rgba(102, 252, 241, 0.2);
+        }
+
+        .error-code {
+            font-size: 6em;
+            color: #66fcf1;
+            margin-bottom: 20px;
+        }
+
+        .error-message {
+            color: #b0b0b0;
+            margin-bottom: 30px;
+        }
+
+        .home-link {
+            display: inline-block;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #66fcf1 0%, #45a29e 100%);
+            border-radius: 8px;
+            color: #0f0f23;
+            text-decoration: none;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dna-background">
+        <div class="dna-strand"></div>
+        <div class="dna-strand"></div>
+    </div>
+    <div class="error-container">
+        <div class="error-card">
+            <div class="error-code">{{ error_code }}</div>
+            <h2>{{ error_message }}</h2>
+            <p class="error-message">
+                {% if error_code == 401 %}
+                Please log in to access this page.
+                {% elif error_code == 403 %}
+                You don't have permission to access this resource.
+                {% elif error_code == 404 %}
+                The page you're looking for doesn't exist.
+                {% else %}
+                Something went wrong on our end.
+                {% endif %}
+            </p>
+            <a href="{{ url_for('index') if current_user else url_for('login') }}" class="home-link">
+                🏠 Return to {{ 'Dashboard' if current_user else 'Login' }}
+            </a>
+        </div>
+    </div>
+</body>
+
+</html>

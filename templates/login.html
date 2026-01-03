@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MapNMark | Login</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='index_styles.css') }}">
+
+    <style>
+        /* ===============================
+           LOGIN LAYOUT
+        =============================== */
+
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 460px;
+            padding: 40px;
+            border-radius: 22px;
+            background: linear-gradient(180deg,
+                    rgba(15, 23, 42, 0.96),
+                    rgba(2, 6, 23, 0.96));
+            border: 1px solid rgba(102, 252, 241, 0.25);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ===============================
+           HEADER
+        =============================== */
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 36px;
+        }
+
+        .login-logo {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .login-logo-icon {
+            font-size: 2.4rem;
+        }
+
+        .login-title {
+            font-size: 2.1rem;
+            font-weight: 800;
+            letter-spacing: 0.6px;
+            background: linear-gradient(135deg, #66fcf1, #45a29e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .login-subtitle {
+            margin-top: 10px;
+            font-size: 0.95rem;
+            color: #9ca3af;
+        }
+
+        /* ===============================
+           FORM
+        =============================== */
+
+        .form-group {
+            margin-bottom: 22px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            color: #a7f3d0;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-wrapper span {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0.8;
+        }
+
+        .input-wrapper input {
+            width: 100%;
+            padding: 14px 14px 14px 46px;
+            background: rgba(15, 52, 96, 0.35);
+            border: 2px solid rgba(102, 252, 241, 0.15);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 0.95rem;
+        }
+
+        .input-wrapper input:focus {
+            outline: none;
+            border-color: #66fcf1;
+            box-shadow: 0 0 0 3px rgba(102, 252, 241, 0.25);
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #66fcf1;
+            font-size: 1.1rem;
+        }
+
+        /* ===============================
+           ACTIONS
+        =============================== */
+
+        .remember-forgot {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            margin-bottom: 24px;
+            color: #9ca3af;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, #66fcf1, #45a29e);
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            color: #020617;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px rgba(102, 252, 241, 0.35);
+        }
+
+        /* ===============================
+           FOOTER
+        =============================== */
+
+        .register-link {
+            text-align: center;
+            margin-top: 28px;
+            font-size: 0.9rem;
+        }
+
+        .register-btn {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 10px 28px;
+            border-radius: 10px;
+            border: 2px solid rgba(102, 252, 241, 0.35);
+            color: #66fcf1;
+            text-decoration: none;
+        }
+
+        .register-btn:hover {
+            background: rgba(102, 252, 241, 0.15);
+        }
+
+        /* ===============================
+           RESPONSIVE
+        =============================== */
+
+        @media (max-width: 480px) {
+            .login-card {
+                padding: 28px 22px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Background -->
+    <div class="dna-background">
+        <div class="dna-strand"></div>
+        <div class="dna-strand"></div>
+        <div class="dna-strand"></div>
+        <div class="dna-strand"></div>
+        <div class="dna-strand"></div>
+    </div>
+
+    <!-- Login -->
+    <div class="login-container">
+        <div class="login-card">
+
+            <div class="login-header">
+                <div class="login-logo">
+                    <span class="login-logo-icon">🧬</span>
+                    <h1 class="login-title">MapNMark</h1>
+                </div>
+                <p class="login-subtitle">Advanced Bioinformatics Analysis Platform</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+            <div>{{ message }}</div>
+            {% endfor %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('login') }}">
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <div class="input-wrapper">
+                        <span>✉</span>
+                        <input type="email" name="email" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Password</label>
+                    <div class="input-wrapper">
+                        <span>🔒</span>
+                        <input type="password" id="password" name="password" required>
+                        <button type="button" class="password-toggle" id="togglePassword">👁</button>
+                    </div>
+                </div>
+
+
+
+                <button type="submit" class="login-btn">Access Platform</button>
+            </form>
+
+
+
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('togglePassword').onclick = function () {
+            const p = document.getElementById('password');
+            p.type = p.type === 'password' ? 'text' : 'password';
+        };
+    </script>
+
+</body>
+
+</html>

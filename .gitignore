@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.env
+diag_file/test.fastq
+pipeline_runs/*
+!pipeline_runs/scripts/
+!pipeline_runs/scripts/*.sh
+*.log

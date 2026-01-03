@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BioPipeline Diagnostics | Genomic System Status</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-cyan: #00c6ff;
+            --primary-blue: #0072ff;
+            --bio-green: #00ff9d;
+            --bio-purple: #9d4edd;
+            --warning-red: #ff4757;
+            --warning-orange: #ffa502;
+            --dark-bg: #0a0e17;
+            --panel-bg: rgba(15, 23, 42, 0.95);
+            --card-bg: rgba(30, 41, 59, 0.8);
+            --dna-helix: rgba(157, 78, 221, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            min-height: 150vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                radial-gradient(circle at 20% 30%, rgba(0, 198, 255, 0.05) 0%, transparent 20%),
+                radial-gradient(circle at 80% 70%, rgba(157, 78, 221, 0.05) 0%, transparent 20%),
+                radial-gradient(circle at 40% 80%, rgba(0, 255, 157, 0.03) 0%, transparent 15%);
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            min-height: 100vh;
+        }
+
+        /* HEADER */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 2rem;
+            background: var(--panel-bg);
+            border-radius: 16px;
+            border: 1px solid rgba(0, 198, 255, 0.25);
+            box-shadow: 0 8px 32px rgba(0, 114, 255, 0.15);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 1.5rem;
+            z-index: 100;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg,
+                    var(--primary-cyan) 0%,
+                    var(--bio-purple) 50%,
+                    var(--bio-green) 100%);
+            border-radius: 3px 3px 0 0;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+        }
+
+        .dna-icon {
+            font-size: 2.25rem;
+            color: var(--bio-green);
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 0.7;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 1;
+                transform: scale(1.05);
+            }
+        }
+
+        .logo-text h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            background: linear-gradient(135deg, var(--primary-cyan) 0%, var(--bio-green) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 0.25rem;
+        }
+
+        .logo-text .subtitle {
+            font-family: 'Rajdhani', sans-serif;
+            color: #94a3b8;
+            font-size: 0.9rem;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .header-btn {
+            background: rgba(0, 114, 255, 0.1);
+            border: 1px solid rgba(0, 198, 255, 0.3);
+            color: var(--primary-cyan);
+            padding: 0.75rem 1.5rem;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-decoration: none;
+            text-transform: uppercase;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            letter-spacing: 0.5px;
+        }
+
+        .header-btn:hover {
+            background: rgba(0, 114, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 198, 255, 0.25);
+            border-color: var(--primary-cyan);
+        }
+
+        /* MAIN LAYOUT */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+            flex: 1;
+            min-height: 0;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* MAIN PANEL */
+        .main-panel {
+            background: var(--panel-bg);
+            border: 1px solid rgba(0, 198, 255, 0.2);
+            border-radius: 16px;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+            height: calc(100vh - 200px);
+            min-height: 600px;
+        }
+
+        .panel-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
+            color: var(--primary-cyan);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(0, 198, 255, 0.1);
+        }
+
+        .panel-title i {
+            font-size: 1.25rem;
+        }
+
+        /* ACTION CARDS */
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .action-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .action-card {
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+            border-radius: 12px;
+            padding: 2rem;
+            border: 1px solid rgba(0, 198, 255, 0.15);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .action-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 198, 255, 0.1), transparent);
+            transition: left 0.7s ease;
+        }
+
+        .action-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary-cyan);
+            box-shadow: 0 12px 30px rgba(0, 198, 255, 0.2);
+        }
+
+        .action-card:hover::before {
+            left: 100%;
+        }
+
+        .action-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1.25rem;
+            display: inline-block;
+        }
+
+        .action-title {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--primary-cyan);
+        }
+
+        .action-desc {
+            color: #94a3b8;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 1rem;
+        }
+
+        .warning-note {
+            background: rgba(255, 165, 2, 0.1);
+            border: 1px solid rgba(255, 165, 2, 0.3);
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .warning-note i {
+            color: var(--warning-orange);
+            font-size: 1rem;
+            margin-top: 0.1rem;
+        }
+
+        .warning-text {
+            color: #ffcc8a;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .warning-text strong {
+            color: var(--warning-orange);
+            font-weight: 600;
+        }
+
+        .action-btn {
+            background: linear-gradient(135deg, var(--primary-cyan), var(--primary-blue));
+            border: none;
+            color: white;
+            padding: 0.85rem 2rem;
+            border-radius: 8px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            letter-spacing: 0.5px;
+        }
+
+        .action-btn:hover:not(:disabled) {
+            transform: scale(1.02);
+            box-shadow: 0 6px 20px rgba(0, 198, 255, 0.4);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* RESULTS SECTION */
+        .results-section {
+            background: rgba(15, 23, 42, 0.7);
+            border-radius: 12px;
+            padding: 1.5rem;
+            flex: 1;
+            display: none;
+            flex-direction: column;
+            border: 1px solid rgba(0, 198, 255, 0.1);
+            height: 420px;
+            min-height: 0;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(0, 198, 255, 0.1);
+            flex-shrink: 0;
+        }
+
+        .section-header .panel-title {
+            margin: 0;
+            border: none;
+            padding: 0;
+            font-size: 1.2rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 70%;
+        }
+
+        .tools-count {
+            background: rgba(0, 198, 255, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--primary-cyan);
+            border: 1px solid rgba(0, 198, 255, 0.3);
+            white-space: nowrap;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        /* RESULTS GRID */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 0.5rem;
+            flex: 1;
+            max-height: 100%;
+            align-content: start;
+        }
+
+        .results-grid::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .results-grid::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 4px;
+        }
+
+        .results-grid::-webkit-scrollbar-thumb {
+            background: linear-gradient(to bottom, var(--primary-cyan), var(--bio-purple));
+            border-radius: 4px;
+        }
+
+        .results-grid::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(to bottom, var(--primary-cyan), var(--bio-green));
+        }
+
+        /* TOOL CARDS */
+        .tool-card {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+            border-radius: 10px;
+            padding: 1.25rem;
+            border-left: 4px solid #555;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.5s ease forwards;
+            position: relative;
+            overflow: hidden;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .tool-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--primary-cyan), transparent);
+        }
+
+        .tool-card.installed {
+            border-left-color: var(--bio-green);
+            box-shadow: 0 5px 20px rgba(0, 255, 157, 0.1);
+        }
+
+        .tool-card.missing {
+            border-left-color: var(--warning-red);
+            box-shadow: 0 5px 20px rgba(255, 71, 87, 0.1);
+        }
+
+        .tool-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+            min-height: 40px;
+        }
+
+        .tool-name {
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .tool-name i {
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .tool-name span {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .tool-badge {
+            padding: 0.35rem 0.85rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .badge-installed {
+            background: rgba(0, 255, 157, 0.15);
+            color: var(--bio-green);
+            border: 1px solid rgba(0, 255, 157, 0.3);
+        }
+
+        .badge-missing {
+            background: rgba(255, 71, 87, 0.15);
+            color: var(--warning-red);
+            border: 1px solid rgba(255, 71, 87, 0.3);
+        }
+
+        .tool-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-top: auto;
+            padding-top: 0.75rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .tool-version {
+            font-family: 'Courier New', monospace;
+            color: #cbd5e1;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        .tool-category {
+            font-size: 0.8rem;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            height: calc(100vh - 200px);
+            position: sticky;
+            top: 180px;
+        }
+
+        .status-card {
+            background: var(--panel-bg);
+            border-radius: 16px;
+            padding: 1.75rem;
+            border: 1px solid rgba(157, 78, 221, 0.25);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(157, 78, 221, 0.1);
+        }
+
+        .status-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.75rem;
+        }
+
+        .status-icon {
+            font-size: 1.75rem;
+            color: var(--bio-purple);
+            background: rgba(157, 78, 221, 0.1);
+            padding: 0.75rem;
+            border-radius: 12px;
+        }
+
+        .status-header h3 {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--primary-cyan);
+            margin-bottom: 0.25rem;
+        }
+
+        .status-header .subtitle {
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+
+        /* FIXED PERCENTAGE DISPLAY */
+        .score-display {
+            text-align: center;
+            padding: 1rem 0;
+            position: relative;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .progress-ring {
+            margin: 0 auto 1.5rem;
+            width: 180px;
+            height: 180px;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .circle-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-width: 12;
+        }
+
+        .circle-progress {
+            fill: none;
+            stroke: url(#gradient);
+            stroke-width: 12;
+            stroke-linecap: round;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+            transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .score-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin: 0.5rem 0;
+            line-height: 1;
+            position: relative;
+            z-index: 2;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-cyan);
+            text-shadow: 0 0 20px currentColor;
+        }
+
+        .score-value.high {
+            background: linear-gradient(135deg, var(--bio-green), #00cc88);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .score-value.medium {
+            background: linear-gradient(135deg, var(--primary-cyan), var(--primary-blue));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .score-value.low {
+            background: linear-gradient(135deg, var(--bio-purple), #7b2cbf);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .score-value.critical {
+            background: linear-gradient(135deg, var(--warning-red), #ff6b81);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .score-label {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 500;
+            margin-top: 0.5rem;
+        }
+
+        /* LOG TERMINAL */
+        .log-terminal {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 1.25rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: var(--bio-green);
+            height: 180px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid rgba(0, 255, 157, 0.1);
+        }
+
+        .log-terminal::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .log-terminal::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 3px;
+        }
+
+        .log-terminal::-webkit-scrollbar-thumb {
+            background: var(--bio-green);
+            border-radius: 3px;
+        }
+
+        .log-line {
+            margin-bottom: 0.25rem;
+            line-height: 1.4;
+            animation: fadeIn 0.3s ease;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* MODAL */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 14, 23, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            backdrop-filter: blur(10px);
+            padding: 1.5rem;
+        }
+
+        .modal {
+            background: var(--panel-bg);
+            border-radius: 20px;
+            padding: 2.5rem;
+            max-width: 500px;
+            width: 100%;
+            border: 1px solid var(--warning-orange);
+            box-shadow: 0 20px 60px rgba(255, 165, 2, 0.3);
+            animation: modalSlideIn 0.4s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .modal-icon {
+            font-size: 2.5rem;
+            color: var(--warning-orange);
+        }
+
+        .modal-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            color: var(--warning-orange);
+            font-weight: 600;
+        }
+
+        .modal-content {
+            color: #cbd5e1;
+            line-height: 1.6;
+            margin: 1.5rem 0 2rem;
+        }
+
+        .modal-warning {
+            background: rgba(255, 165, 2, 0.1);
+            border: 1px solid rgba(255, 165, 2, 0.3);
+            border-radius: 10px;
+            padding: 1.25rem;
+            margin: 1.5rem 0;
+        }
+
+        .modal-warning i {
+            color: var(--warning-orange);
+            margin-right: 0.5rem;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 0.85rem 2rem;
+            border-radius: 8px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            font-size: 0.95rem;
+        }
+
+        .modal-btn-cancel {
+            background: rgba(255, 255, 255, 0.1);
+            color: #94a3b8;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-btn-cancel:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-btn-confirm {
+            background: linear-gradient(135deg, var(--warning-orange), #ff7b00);
+            color: white;
+        }
+
+        .modal-btn-confirm:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 165, 2, 0.4);
+        }
+
+        /* LOADING OVERLAY */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 14, 23, 0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .dna-loader {
+            width: 120px;
+            height: 120px;
+            position: relative;
+            margin-bottom: 2.5rem;
+        }
+
+        .dna-strand {
+            position: absolute;
+            width: 3px;
+            height: 100%;
+            background: linear-gradient(to bottom, transparent, var(--primary-cyan), transparent);
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0.5;
+        }
+
+        .dna-node {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: var(--bio-green);
+            border-radius: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: dnaFloat 2s ease-in-out infinite;
+            box-shadow: 0 0 20px var(--bio-green);
+        }
+
+        .dna-node:nth-child(2) {
+            top: 10%;
+            animation-delay: 0.1s;
+        }
+
+        .dna-node:nth-child(3) {
+            top: 30%;
+            animation-delay: 0.2s;
+        }
+
+        .dna-node:nth-child(4) {
+            top: 50%;
+            animation-delay: 0.3s;
+        }
+
+        .dna-node:nth-child(5) {
+            top: 70%;
+            animation-delay: 0.4s;
+        }
+
+        .dna-node:nth-child(6) {
+            top: 90%;
+            animation-delay: 0.5s;
+        }
+
+        @keyframes dnaFloat {
+
+            0%,
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+
+            50% {
+                transform: translate(-50%, -50%) scale(1.3);
+            }
+        }
+
+        .loading-text {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--primary-cyan);
+            font-size: 1.3rem;
+            font-weight: 500;
+            text-align: center;
+            letter-spacing: 1px;
+            animation: pulseText 2s ease-in-out infinite;
+        }
+
+        @keyframes pulseText {
+
+            0%,
+            100% {
+                opacity: 0.7;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        /* NOTIFICATIONS */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            z-index: 1000;
+            animation: slideIn 0.3s ease, slideOut 0.3s ease 2.7s forwards;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            max-width: 350px;
+        }
+
+        .notification.success {
+            background: rgba(0, 255, 157, 0.15);
+            border: 1px solid var(--bio-green);
+            color: var(--bio-green);
+        }
+
+        .notification.error {
+            background: rgba(255, 71, 87, 0.15);
+            border: 1px solid var(--warning-red);
+            color: var(--warning-red);
+        }
+
+        .notification.warning {
+            background: rgba(255, 165, 2, 0.15);
+            border: 1px solid var(--warning-orange);
+            color: var(--warning-orange);
+        }
+
+        .notification.info {
+            background: rgba(0, 198, 255, 0.15);
+            border: 1px solid var(--primary-cyan);
+            color: var(--primary-cyan);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        /* EMPTY STATE */
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #94a3b8;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1.5rem;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.5rem;
+            margin-bottom: 0.75rem;
+            color: #cbd5e1;
+        }
+
+        .empty-state p {
+            max-width: 400px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* FILE REQUIREMENT NOTE */
+        .file-requirement {
+            font-size: 0.8em;
+            color: #64748b;
+            margin-top: 10px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo-area">
+                <div class="dna-icon">
+                    <i class="fas fa-dna"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>BioPipeline Diagnostics</h1>
+                    <div class="subtitle">Genomic Analysis System Integrity Monitor v2.1</div>
+                </div>
+            </div>
+            <div class="header-controls">
+                <a href="{{ url_for('index') }}" class="header-btn">
+                    <i class="fas fa-arrow-left"></i> Home
+                </a>
+
+            </div>
+        </header>
+
+        <!-- Dashboard -->
+        <div class="dashboard">
+            <!-- Main Panel -->
+            <main class="main-panel">
+                <div class="panel-title">
+                    <i class="fas fa-microscope"></i>
+                    System Diagnostics
+                </div>
+
+                <!-- Action Cards -->
+                <div class="action-grid" id="actionGrid">
+                    <div class="action-card">
+                        <div class="action-icon" style="color: var(--primary-cyan);">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <div class="action-title">Full System Scan</div>
+                        <div class="action-desc">
+                            Comprehensive analysis of all bioinformatics tools, dependencies, and system configurations
+                        </div>
+                        <button id="scanBtn" class="action-btn" onclick="startBenchmark()">
+                            <i class="fas fa-play"></i> Initialize Scan
+                        </button>
+                    </div>
+
+                    <div class="action-card">
+                        <div class="action-icon" style="color: var(--bio-green);">
+                            <i class="fas fa-vial"></i>
+                        </div>
+                        <div class="action-title">Pipeline Validation Test</div>
+                        <div class="action-desc">
+                            Execute a full workflow with test data to validate pipeline integrity
+                        </div>
+
+                        <!-- Warning Note -->
+                        <div class="warning-note">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <div class="warning-text">
+                                <strong>Time Warning:</strong> This process may take 30-40 minutes to complete. Ensure
+                                you have sufficient time before starting.
+                            </div>
+                        </div>
+
+                        <button id="testBtn" class="action-btn" onclick="showValidationWarning()"
+                            style="background: linear-gradient(135deg, var(--bio-green), #00cc88);">
+                            <i class="fas fa-flask"></i> Run Validation
+                        </button>
+
+
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                <div id="resultsSection" class="results-section">
+                    <div class="section-header">
+                        <div class="panel-title">
+                            <i class="fas fa-list-check"></i>
+                            Tool Inventory Status
+                        </div>
+                        <div id="toolsCount" class="tools-count">0/0 Tools Installed</div>
+                    </div>
+                    <div id="resultsGrid" class="results-grid">
+                        <!-- Results will be populated here -->
+                    </div>
+                </div>
+            </main>
+
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <!-- Health Score Card -->
+                <div class="status-card">
+                    <div class="status-header">
+                        <div class="status-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div>
+                            <h3>System Health Score</h3>
+                            <div class="subtitle">Overall Pipeline Readiness</div>
+                        </div>
+                    </div>
+
+                    <div class="score-display">
+                        <div class="progress-ring">
+                            <svg viewBox="0 0 100 100">
+                                <defs>
+                                    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="var(--primary-cyan)" />
+                                        <stop offset="100%" stop-color="var(--bio-purple)" />
+                                    </linearGradient>
+                                </defs>
+                                <circle class="circle-bg" cx="50" cy="50" r="45" />
+                                <circle class="circle-progress" cx="50" cy="50" r="45" stroke-dasharray="283"
+                                    stroke-dashoffset="283" />
+                            </svg>
+                        </div>
+                        <div class="score-value" id="finalScore">0%</div>
+                        <div class="score-label">System Integrity</div>
+                    </div>
+                </div>
+
+                <!-- Diagnostic Log Card -->
+                <div class="status-card">
+                    <div class="status-header">
+                        <div class="status-icon">
+                            <i class="fas fa-terminal"></i>
+                        </div>
+                        <div>
+                            <h3>Diagnostic Log</h3>
+                            <div class="subtitle">Real-time System Messages</div>
+                        </div>
+                    </div>
+                    <div class="log-terminal" id="termLog">
+                        <div class="log-line">> System ready for diagnostics...</div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="dna-loader">
+            <div class="dna-strand"></div>
+            <div class="dna-node"></div>
+            <div class="dna-node"></div>
+            <div class="dna-node"></div>
+            <div class="dna-node"></div>
+            <div class="dna-node"></div>
+        </div>
+        <div class="loading-text" id="loadingText">Initializing System Scan...</div>
+    </div>
+
+    <!-- Warning Modal -->
+    <div id="warningModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="modal-title">Extended Processing Time Required</div>
+            </div>
+
+            <div class="modal-content">
+                <p>You are about to start a comprehensive pipeline validation test. This process will:</p>
+
+                <div class="modal-warning">
+                    <i class="fas fa-clock"></i>
+                    <strong>Take approximately 30-40 minutes</strong> to complete the full genomic analysis workflow.
+                </div>
+
+                <p>During this time:</p>
+                <ul style="padding-left: 1.5rem; margin: 1rem 0; line-height: 1.6;">
+                    <li>The system will process test genomic data</li>
+                    <li>Multiple bioinformatics tools will be executed sequentially</li>
+                    <li>Results will be validated against expected outcomes</li>
+                    <li>You can monitor progress in the diagnostic log</li>
+                </ul>
+
+                <p><strong>Do not close this window</strong> during the validation process.</p>
+            </div>
+
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-cancel" onclick="hideValidationWarning()">
+                    Cancel
+                </button>
+                <button class="modal-btn modal-btn-confirm" onclick="confirmValidationTest()">
+                    <i class="fas fa-play"></i> Start Validation
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const scanBtn = document.getElementById('scanBtn');
+        const testBtn = document.getElementById('testBtn');
+        const actionGrid = document.getElementById('actionGrid');
+        const resultsSection = document.getElementById('resultsSection');
+        const resultsGrid = document.getElementById('resultsGrid');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loadingText');
+        const termLog = document.getElementById('termLog');
+        const finalScore = document.getElementById('finalScore');
+        const toolsCount = document.getElementById('toolsCount');
+        const progressCircle = document.querySelector('.circle-progress');
+        const warningModal = document.getElementById('warningModal');
+
+        // Diagnostic logs
+        const diagnosticLogs = [
+            "Initializing diagnostic protocols...",
+            "Checking Conda environments...",
+            "Verifying FASTQ processing tools...",
+            "Validating alignment software (BWA/SAMtools)...",
+            "Testing variant calling pipelines...",
+            "Checking database connections...",
+            "Verifying QC tools (FastQC, MultiQC)...",
+            "Testing visualization dependencies...",
+            "Validating pipeline orchestration...",
+            "Finalizing system assessment..."
+        ];
+
+        // Add log message
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+
+            const logLine = document.createElement('div');
+            logLine.className = 'log-line';
+
+            let color = 'var(--bio-green)';
+            if (type === 'error') color = 'var(--warning-red)';
+            if (type === 'warning') color = 'var(--warning-orange)';
+            if (type === 'info') color = 'var(--primary-cyan)';
+
+            logLine.innerHTML = `<span style="color: #64748b">[${timestamp}]</span> <span style="color: ${color}">${message}</span>`;
+
+            termLog.appendChild(logLine);
+            termLog.scrollTop = termLog.scrollHeight;
+
+            if (termLog.children.length > 50) {
+                termLog.removeChild(termLog.firstChild);
+            }
+        }
+
+        // Update progress ring AND percentage display
+        function updateProgress(percentage) {
+            const offset = 283 - (283 * percentage / 100);
+            progressCircle.style.strokeDashoffset = offset;
+
+            const displayPercentage = Math.min(Math.max(Math.round(percentage), 0), 100);
+
+            // FIXED: Update the text content properly
+            finalScore.textContent = `${displayPercentage}%`;
+
+            // Remove all existing classes
+            finalScore.className = 'score-value';
+
+            // Add appropriate class based on percentage
+            if (displayPercentage >= 90) {
+                finalScore.classList.add('high');
+            } else if (displayPercentage >= 70) {
+                finalScore.classList.add('medium');
+            } else if (displayPercentage >= 50) {
+                finalScore.classList.add('low');
+            } else {
+                finalScore.classList.add('critical');
+            }
+
+            // Force browser to re-render the gradient
+            void finalScore.offsetWidth;
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
+                ${message}
+            `;
+
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 3000);
+        }
+
+        // Show validation warning modal
+        function showValidationWarning() {
+            warningModal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Hide validation warning modal
+        function hideValidationWarning() {
+            warningModal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        // Confirm validation test
+        function confirmValidationTest() {
+            hideValidationWarning();
+            startTestRun();
+        }
+
+        // Start benchmark
+        async function startBenchmark() {
+            scanBtn.disabled = true;
+            scanBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+
+            loadingOverlay.style.display = 'flex';
+            actionGrid.style.opacity = '0.5';
+            actionGrid.style.pointerEvents = 'none';
+
+            // Clear previous results
+            resultsGrid.innerHTML = '';
+            termLog.innerHTML = '<div class="log-line">> Starting system diagnostics...</div>';
+
+            // Reset score to 0% immediately
+            updateProgress(0);
+
+            let logIndex = 0;
+            const logInterval = setInterval(() => {
+                if (logIndex < diagnosticLogs.length) {
+                    addLog(diagnosticLogs[logIndex], 'info');
+                    loadingText.textContent = diagnosticLogs[logIndex];
+                    logIndex++;
+                }
+            }, 700);
+
+            try {
+                const response = await fetch("{{ url_for('run_diagnostics') }}");
+                const data = await response.json();
+
+                clearInterval(logInterval);
+                loadingOverlay.style.display = 'none';
+                actionGrid.style.opacity = '1';
+                actionGrid.style.pointerEvents = 'auto';
+                resultsSection.style.display = 'flex';
+                scanBtn.disabled = false;
+                scanBtn.innerHTML = '<i class="fas fa-redo"></i> Rescan System';
+
+                if (data.error) {
+                    addLog(`ERROR: ${data.error}`, 'error');
+                    showNotification(`Scan failed: ${data.error}`, 'error');
+                    updateProgress(0);
+                    return;
+                }
+
+                // Scroll to results
+                resultsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                displayResults(data.tools || []);
+                updateScore(data.tools || []);
+
+                showNotification('System scan completed successfully!', 'success');
+
+            } catch (error) {
+                clearInterval(logInterval);
+                addLog(`Network Error: ${error.message}`, 'error');
+                showNotification(`Network error: ${error.message}`, 'error');
+                loadingOverlay.style.display = 'none';
+                actionGrid.style.opacity = '1';
+                actionGrid.style.pointerEvents = 'auto';
+                scanBtn.disabled = false;
+                scanBtn.innerHTML = '<i class="fas fa-play"></i> Initialize Scan';
+                updateProgress(0);
+            }
+        }
+
+        // Display results
+        function displayResults(tools) {
+            resultsGrid.innerHTML = '';
+
+            if (!tools || tools.length === 0) {
+                resultsGrid.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle" style="color: var(--warning-orange);"></i>
+                        <h3>No Diagnostic Data</h3>
+                        <p>Unable to retrieve tool information. Please check system connectivity.</p>
+                    </div>
+                `;
+                toolsCount.textContent = '0/0 Tools';
+                return;
+            }
+
+            let installedCount = 0;
+
+            tools.forEach(tool => {
+                if (tool.status === 'installed' || tool.status === 'online') {
+                    installedCount++;
+                }
+            });
+
+            toolsCount.textContent = `${installedCount}/${tools.length} Tools`;
+
+            tools.forEach((tool, index) => {
+                setTimeout(() => {
+                    const card = document.createElement('div');
+                    const isInstalled = tool.status === 'installed' || tool.status === 'online';
+
+                    card.className = `tool-card ${isInstalled ? 'installed' : 'missing'}`;
+                    card.style.animationDelay = `${index * 0.1}s`;
+
+                    const displayName = tool.name && tool.name.length > 25
+                        ? tool.name.substring(0, 25) + '...'
+                        : tool.name || 'Unknown Tool';
+
+                    card.innerHTML = `
+                        <div class="tool-header">
+                            <div class="tool-name">
+                                <i class="fas fa-${isInstalled ? 'check-circle' : 'times-circle'}"></i>
+                                <span title="${tool.name || 'Unknown Tool'}">${displayName}</span>
+                            </div>
+                            <span class="tool-badge ${isInstalled ? 'badge-installed' : 'badge-missing'}" title="${tool.status || 'unknown'}">
+                                ${isInstalled ? '✓ Installed' : '✗ Missing'}
+                            </span>
+                        </div>
+                        <div class="tool-details">
+                            <div class="tool-version" title="Version: ${tool.version || 'N/A'}">
+                                ${tool.version || 'N/A'}
+                            </div>
+                            <div class="tool-category">
+                                ${tool.category || 'Core'}
+                            </div>
+                        </div>
+                    `;
+
+                    resultsGrid.appendChild(card);
+
+                }, index * 100);
+            });
+        }
+
+        // Update score with smooth animation
+        function updateScore(tools) {
+            if (!tools || tools.length === 0) {
+                updateProgress(0);
+                return;
+            }
+
+            const installed = tools.filter(t => t.status === 'installed' || t.status === 'online').length;
+            const percentage = (installed / tools.length) * 100;
+
+            let current = 0;
+            const interval = setInterval(() => {
+                if (current >= percentage) {
+                    clearInterval(interval);
+                    addLog(`System scan complete: ${Math.round(percentage)}% integrity score`, 'success');
+                } else {
+                    current += 1;
+                    updateProgress(current);
+                }
+            }, 20);
+        }
+
+        // Start test run with time estimation
+        async function startTestRun() {
+            testBtn.disabled = true;
+            testBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing...';
+
+            addLog('Starting pipeline validation test...', 'info');
+            addLog('Warning: This process may take 30-40 minutes to complete.', 'warning');
+            showNotification('Starting pipeline validation test...', 'info');
+
+            loadingOverlay.style.display = 'flex';
+            loadingText.textContent = 'Initializing pipeline validation...';
+
+            try {
+                const response = await fetch("{{ url_for('run_test_pipeline_route') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const data = await response.json();
+                loadingOverlay.style.display = 'none';
+
+                if (data.error) {
+                    addLog(`Validation failed: ${data.error}`, 'error');
+                    showNotification(`Validation failed: ${data.error}`, 'error');
+                    testBtn.disabled = false;
+                    testBtn.innerHTML = '<i class="fas fa-flask"></i> Run Validation';
+                    return;
+                }
+
+                addLog(`Test pipeline started with ID: ${data.run_id}`, 'info');
+                addLog('Estimated completion time: 30-40 minutes', 'warning');
+                showNotification('Pipeline test started successfully. Monitoring progress...', 'info');
+
+                monitorTestRun(data.run_id);
+
+            } catch (error) {
+                loadingOverlay.style.display = 'none';
+                addLog(`Test initialization failed: ${error.message}`, 'error');
+                showNotification(`Test failed: ${error.message}`, 'error');
+                testBtn.disabled = false;
+                testBtn.innerHTML = '<i class="fas fa-flask"></i> Run Validation';
+            }
+        }
+
+        // Monitor test run
+        async function monitorTestRun(runId) {
+            let startTime = Date.now();
+            let checkCount = 0;
+
+            testBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running...';
+
+            const statusInterval = setInterval(async () => {
+                try {
+                    checkCount++;
+                    const elapsedTime = Date.now() - startTime;
+                    const elapsedMinutes = Math.floor(elapsedTime / 60000);
+
+                    const response = await fetch(`/api/diagnostics/status/${runId}`);
+                    const data = await response.json();
+
+                    addLog(`Pipeline status: ${data.status} (${elapsedMinutes}m elapsed)`, 'info');
+
+                    if (data.status === 'success') {
+                        clearInterval(statusInterval);
+                        addLog('✅ Pipeline validation successful!', 'success');
+                        addLog(`Total time: ${elapsedMinutes} minutes`, 'info');
+                        showNotification(`Pipeline validation passed in ${elapsedMinutes} minutes!`, 'success');
+                        testBtn.innerHTML = '<i class="fas fa-check"></i> Validation Passed';
+                        testBtn.style.background = 'linear-gradient(135deg, var(--bio-green), #00cc88)';
+
+                        setTimeout(() => {
+                            testBtn.disabled = false;
+                            testBtn.innerHTML = '<i class="fas fa-flask"></i> Run Validation';
+                            testBtn.style.background = 'linear-gradient(135deg, var(--bio-green), #00cc88)';
+                        }, 5000);
+
+                    } else if (data.status === 'failed' || data.status === 'cancelled') {
+                        clearInterval(statusInterval);
+                        addLog('❌ Pipeline validation failed', 'error');
+                        showNotification('Pipeline validation failed', 'error');
+                        testBtn.disabled = false;
+                        testBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Retry Validation';
+                    } else if (data.status === 'running') {
+                        if (checkCount % 5 === 0) {
+                            addLog(`Validation in progress... (${elapsedMinutes}m elapsed)`, 'info');
+                        }
+                        testBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Running (${elapsedMinutes}m)...`;
+                    }
+
+                } catch (error) {
+                    addLog(`Status check error: ${error.message}`, 'error');
+                }
+            }, 30000);
+        }
+
+        // Export report
+        function exportReport() {
+            addLog('Exporting system diagnostics report...', 'info');
+            showNotification('Generating comprehensive PDF report...', 'info');
+
+            loadingOverlay.style.display = 'flex';
+            loadingText.textContent = 'Generating report...';
+
+            setTimeout(() => {
+                loadingOverlay.style.display = 'none';
+                addLog('Report exported successfully (diagnostics_report.pdf)', 'success');
+                showNotification('Report exported successfully!', 'success');
+
+                const link = document.createElement('a');
+                link.href = '#';
+                link.download = `biopipeline_diagnostics_${new Date().toISOString().split('T')[0]}.pdf`;
+                link.click();
+            }, 1500);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            addLog('BioPipeline Diagnostics System Initialized v2.1', 'info');
+            addLog('Ready for system scan and pipeline validation', 'info');
+
+            // Initialize with 0% score
+            updateProgress(0);
+        });
+
+        // Close modal on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && warningModal.style.display === 'flex') {
+                hideValidationWarning();
+            }
+        });
+
+        // Close modal when clicking outside
+        warningModal.addEventListener('click', (e) => {
+            if (e.target === warningModal) {
+                hideValidationWarning();
+            }
+        });
+    </script>
+</body>
+
+</html>
