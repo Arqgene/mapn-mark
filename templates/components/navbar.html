@@ -1,0 +1,178 @@
+<style>
+    /* Navbar Styles */
+    .main-navbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        transform: none;
+        width: 100%;
+        max-width: none;
+        background: rgba(15, 23, 42, 0.95);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-bottom: 1px solid rgba(102, 252, 241, 0.2);
+        border-radius: 0;
+        padding: 15px 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 10000;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        transition: all 0.3s ease;
+    }
+
+    .main-navbar:hover {
+        background: rgba(15, 23, 42, 0.98);
+        border-color: rgba(102, 252, 241, 0.4);
+    }
+
+    .nav-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        text-decoration: none;
+    }
+
+    .nav-logo {
+        font-size: 1.5rem;
+        background: linear-gradient(135deg, #66fcf1 0%, #45a29e 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+    }
+
+    .nav-links {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .nav-item {
+        color: #94a3b8;
+        text-decoration: none;
+        padding: 8px 16px;
+        border-radius: 10px;
+        font-weight: 500;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .nav-item:hover {
+        color: #66fcf1;
+        background: rgba(102, 252, 241, 0.1);
+    }
+
+    .nav-item.active {
+        color: #66fcf1;
+        background: rgba(102, 252, 241, 0.15);
+        border-color: rgba(102, 252, 241, 0.2);
+        box-shadow: 0 0 20px rgba(102, 252, 241, 0.1);
+    }
+
+    .nav-divider {
+        width: 1px;
+        height: 24px;
+        background: rgba(148, 163, 184, 0.2);
+        margin: 0 8px;
+    }
+
+    .nav-user {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .user-pill {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 12px;
+        background: rgba(30, 41, 59, 0.6);
+        border-radius: 20px;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        font-size: 0.9rem;
+        color: #cbd5e1;
+    }
+
+    .nav-logout {
+        color: #f87171;
+        padding: 8px;
+        border-radius: 8px;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+    }
+
+    .nav-logout:hover {
+        background: rgba(239, 68, 68, 0.15);
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 900px) {
+        .nav-text {
+            display: none;
+        }
+
+        .nav-item {
+            padding: 8px;
+        }
+
+        .nav-logo {
+            font-size: 1.2rem;
+        }
+    }
+</style>
+
+<nav class="main-navbar">
+    <a href="{{ url_for('index') }}" class="nav-brand">
+        <span style="font-size: 1.5rem;">🧬</span>
+        <span class="nav-logo">MapNMark</span>
+    </a>
+
+    <div class="nav-links">
+        <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint == 'index' %}active{% endif %}">
+            <span>🏠</span>
+            <span class="nav-text">Home</span>
+        </a>
+
+        <a href="{{ url_for('my_runs') }}" class="nav-item {% if request.endpoint == 'my_runs' %}active{% endif %}">
+            <span>📁</span>
+            <span class="nav-text">My Runs</span>
+        </a>
+
+        <a href="{{ url_for('diagnostics') }}"
+            class="nav-item {% if request.endpoint == 'diagnostics' %}active{% endif %}">
+            <span>🔧</span>
+            <span class="nav-text">Diagnostics</span>
+        </a>
+
+        {% if session.get('role') == 'admin' %}
+        <a href="{{ url_for('create_user') }}"
+            class="nav-item {% if request.endpoint == 'create_user' %}active{% endif %}">
+            <span>➕</span>
+            <span class="nav-text">Create User</span>
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="nav-user">
+        <div class="nav-divider"></div>
+        {% if session.get('user') %}
+        <div class="user-pill">
+            <span>👤</span>
+            <span class="nav-text">{{ session.get('name', 'User') }}</span>
+        </div>
+        <a href="{{ url_for('logout') }}" class="nav-logout" title="Logout">
+            🚪
+        </a>
+        {% endif %}
+    </div>
+</nav>
+
+<!-- Spacer to prevent content overlap -->
+<div style="height: 100px;"></div>

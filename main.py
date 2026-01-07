@@ -3,10 +3,11 @@ from flask import (
     abort, request, render_template,
     flash, session, jsonify, after_this_request
 )
-from controllers import main_controller, diagnostics_controller
-from models.db import get_user_by_email, init_db, update_user_session_token
+from controllers import main_controller, diagnostics_controller, fasta_controller
+from models.db import get_user_by_email, init_db, update_user_session_token, get_db_connection
 from ai.chat_engine import build_prompt
 from openai import OpenAI
+from datetime import datetime
 
 import subprocess
 import os
@@ -27,18 +28,10 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "dev_key_fallback_do_not_use_in_prod")
 
+# Increase max upload size to 16GB
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 * 1024
+
 PIPELINE_RUNS_DIR = "pipeline_runs"
-
-# =============================
-# DEMO USER DATABASE
-# =============================
-
-# =============================
-# DEMO USER DATABASE
-# =============================
-
-# Users are now managed via MySQL database
-
 
 # =============================
 # HELPERS
@@ -145,6 +138,61 @@ def logout():
     flash("Logged out successfully.", "success")
     return redirect(url_for("login"))
 
+
+# =============================
+# ADMIN ROUTES
+# =============================
+
+@app.route("/create-user")
+@login_required
+def create_user():
+    if session.get("role") != "admin":
+        abort(403)
+    return render_template("create_user.html")
+
+
+@app.route("/api/create-user", methods=["POST"])
+@login_required
+def api_create_user():
+    if session.get("role") != "admin":
+        return jsonify({"error": "Unauthorized"}), 403
+
+    data = request.json
+    email = data.get("email")
+    password = data.get("password")
+    name = data.get("name")
+    role = data.get("role", "user")
+
+    if not all([email, password, name]):
+        return jsonify({"error": "Missing required fields"}), 400
+
+    conn = get_db_connection()
+    if conn:
+        try:
+            cursor = conn.cursor()
+            
+            # Check if user exists
+            cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
+            if cursor.fetchone():
+                return jsonify({"error": "User with this email already exists"}), 409
+
+            # Insert new user
+            cursor.execute(
+                "INSERT INTO users (email, password, name, role) VALUES (%s, %s, %s, %s)",
+                (email, password, name, role)
+            )
+            conn.commit()
+            return jsonify({"message": "User created successfully"}), 201
+
+        except Exception as e:
+            print(f"Error creating user: {e}")
+            return jsonify({"error": "Internal database error"}), 500
+        finally:
+            cursor.close()
+            conn.close()
+    
+    return jsonify({"error": "Database connection failed"}), 500
+
 # =============================
 # SAFE ZIP CREATION
 # =============================
@@ -172,15 +220,39 @@ def get_or_create_run_zip(email: str, run_id: str) -> Path:
 
     zip_path = run_dir / f"{run_id}.zip"
 
-    # ZIP already exists → reuse
+    # 1. Check if valid ZIP already exists
     if zip_path.exists():
-        return zip_path
+        if zipfile.is_zipfile(zip_path):
+            return zip_path
+        else:
+            print(f"Corrupt zip found at {zip_path}, regenerating...")
+            try:
+                os.remove(zip_path)
+            except OSError:
+                pass
 
-    # Create ZIP once
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
-        for file in run_dir.rglob("*"):
-            if file.is_file() and file.name != zip_path.name:
-                zipf.write(file, file.relative_to(run_dir))
+    # 2. Atomic Creation (Write to temp, then rename)
+    tmp_zip_path = run_dir / f"{run_id}.zip.tmp"
+    
+    try:
+        with zipfile.ZipFile(tmp_zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+            for file in run_dir.rglob("*"):
+                # Skip the zip file itself and any temp files
+                if file.is_file() and file.name != zip_path.name and not file.name.endswith('.tmp'):
+                    zipf.write(file, file.relative_to(run_dir))
+        
+        # Atomic move
+        if tmp_zip_path.exists():
+            tmp_zip_path.replace(zip_path)
+            
+    except Exception as e:
+        print(f"Error creating zip: {e}")
+        if tmp_zip_path.exists():
+            try:
+                os.remove(tmp_zip_path)
+            except OSError:
+                pass
+        raise e
 
     return zip_path
 
@@ -378,31 +450,112 @@ def download_file(username, run_id):
 @app.route("/my-runs")
 @login_required
 def my_runs():
-    runs = []
-    base_root = Path(PIPELINE_RUNS_DIR)
+    username = safe_username(session["user"])
+    user_root = Path(PIPELINE_RUNS_DIR) / username
+    
+    # Fetch DB runs
+    conn = get_db_connection()
+    db_runs_map = {}
+    if conn:
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM pipeline_runs WHERE user_email = %s", (session["user"],))
+            rows = cursor.fetchall()
+            for r in rows:
+                db_runs_map[r["run_id"]] = r
+            cursor.close()
+            conn.close()
+        except:
+             pass
 
-    user_root = base_root / safe_username(session["user"])
+    runs_data = []
+    
+    # 1. Runs in DB
+    for run_id, db_data in db_runs_map.items():
+         run_path = user_root / run_id
+         
+         # Check files
+         file_tree = {}
+         has_files = False
+         pipeline_done = False
+         pipeline_aborted = False
+         
+         if run_path.exists():
+             has_files = True
+             files = [str(p.relative_to(run_path)) for p in run_path.rglob("*") if p.is_file()]
+             file_tree = build_file_tree(sorted(files))
+             
+             # Check for physical status markers
+             pipeline_done = (run_path / "PIPELINE_DONE").exists()
+             pipeline_aborted = (run_path / "CANCEL").exists()
+             
+             # Check logs for strict success/failure if markers missing
+             log_path = run_path / "pipeline_output.log"
+             if log_path.exists():
+                 try:
+                     with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+                         content = f.read()
+                         if "PIPELINE FINISHED" in content or "PIPELINE FINISHED SUCCESSFULLY" in content:
+                             pipeline_done = True
+                         if "PIPELINE ABORTED BY USER" in content:
+                             pipeline_aborted = True
+                 except:
+                     pass
 
-    if not user_root.exists():
-        return render_template("my_runs.html", runs=[])
+         # SELF-HEALING / SYNC LOGIC
+         current_status = db_data["status"]
+         new_status = current_status
+         
+         if pipeline_done and current_status != 'completed':
+             new_status = 'completed'
+         elif pipeline_aborted and current_status != 'cancelled':
+             new_status = 'cancelled'
+         
+         # Update DB if mismatched
+         if new_status != current_status:
+             try:
+                 # Re-connect to update
+                 update_conn = get_db_connection()
+                 if update_conn:
+                     update_cursor = update_conn.cursor()
+                     update_cursor.execute(
+                         "UPDATE pipeline_runs SET status = %s, end_time = %s WHERE run_id = %s",
+                         (new_status, datetime.now(), run_id)
+                     )
+                     update_conn.commit()
+                     update_cursor.close()
+                     update_conn.close()
+                     current_status = new_status # Reflect in UI immediately
+             except Exception as e:
+                 print(f"Failed to sync status for {run_id}: {e}")
 
-    for run_dir in sorted(user_root.iterdir(), reverse=True):
-        if not run_dir.is_dir():
-            continue
+         runs_data.append({
+             "run_id": run_id,
+             "status": current_status,
+             "start_time": db_data["start_time"],
+             "end_time": db_data["end_time"],
+             "file_tree": file_tree,
+             "has_files": has_files
+         })
 
-        files = [
-            str(p.relative_to(run_dir))
-            for p in run_dir.rglob("*")
-            if p.is_file()
-        ]
+    # 2. Runs on disk NOT in DB (Legacy)
+    if user_root.exists():
+        for run_dir in user_root.iterdir():
+            if run_dir.is_dir() and run_dir.name not in db_runs_map:
+                files = [str(p.relative_to(run_dir)) for p in run_dir.rglob("*") if p.is_file()]
+                runs_data.append({
+                    "run_id": run_dir.name,
+                    "status": "legacy",
+                    "start_time": datetime.fromtimestamp(run_dir.stat().st_ctime),
+                    "end_time": None,
+                    "file_tree": build_file_tree(sorted(files)),
+                     "has_files": True
+                })
 
-        runs.append({
-            "username": safe_username(session["user"]),
-            "run_id": run_dir.name,
-            "file_tree": build_file_tree(sorted(files))
-        })
+    # Sort by start_time
+    runs_data.sort(key=lambda x: x["start_time"] if x["start_time"] else datetime.min, reverse=True)
 
-    return render_template("my_runs.html", runs=runs)
+    return render_template("my_runs.html", runs=runs_data, zip=zip)
 
 # =============================
 # CANCEL PIPELINE
@@ -423,9 +576,24 @@ def cancel_run(run_id):
         stderr=subprocess.DEVNULL
     )
 
+    # Log to DB
+    main_controller.log_run_end(run_id, 'cancelled')
+
     flash("Pipeline cancelled.", "info")
     return redirect(url_for("status", run_id=run_id))
 
+
+
+
+@app.route("/fasta-compare", methods=["GET"])
+@login_required
+def fasta_compare_index():
+    return fasta_controller.index()
+
+@app.route("/fasta-compare", methods=["POST"])
+@login_required
+def fasta_compare_run():
+    return fasta_controller.compare()
 
 
 @app.route("/delete_run/<username>/<run_id>", methods=["POST"])
@@ -443,6 +611,18 @@ def delete_run(username, run_id):
         abort(404)
 
     shutil.rmtree(run_dir)
+
+    # Delete from DB
+    conn = get_db_connection()
+    if conn:
+        try:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM pipeline_runs WHERE run_id = %s", (run_id,))
+            conn.commit()
+            cursor.close()
+            conn.close()
+        except Exception as e:
+            print(f"Error deleting from DB: {e}")
     flash("Run deleted successfully.", "success")
     return redirect(url_for("my_runs"))
 
@@ -485,4 +665,5 @@ if __name__ == "__main__":
     else:
         from waitress import serve
         print("Starting production server with Waitress on port 5000...")
-        serve(app, host="0.0.0.0", port=5000)
+        # Increase max_request_body_size to 16GB
+        serve(app, host="0.0.0.0", port=5000, max_request_body_size=16 * 1024 * 1024 * 1024)

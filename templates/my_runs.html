@@ -358,90 +358,70 @@
             line-height: 1.5;
         }
 
-        /* Download Loading Overlay */
-        .download-overlay {
+        /* Download-specific loading overlay */
+        .download-loading {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(10px);
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 10, 25, 0.95);
+            backdrop-filter: blur(20px);
             display: none;
             justify-content: center;
             align-items: center;
-            z-index: 9999;
+            z-index: 10001;
             opacity: 0;
             transition: opacity 0.3s ease;
         }
 
-        .download-overlay.show {
+        .download-loading.show {
             display: flex;
             opacity: 1;
+            animation: fadeIn 0.3s ease;
         }
 
-        .download-card {
-            background: rgba(15, 23, 42, 0.95);
-            border: 2px solid rgba(102, 252, 241, 0.3);
-            border-radius: 20px;
-            padding: 40px;
-            text-align: center;
-            max-width: 500px;
-            width: 90%;
-            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
-            animation: slideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+        /* Flash Message Animation for show */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
 
-        .spinner {
-            width: 60px;
-            height: 60px;
-            border: 4px solid rgba(102, 252, 241, 0.3);
-            border-top-color: #66fcf1;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 25px;
-        }
-
-        @keyframes spin {
             to {
-                transform: rotate(360deg);
+                opacity: 1;
             }
         }
 
-        .download-title {
-            color: #66fcf1;
-            font-size: 1.8rem;
-            margin-bottom: 15px;
-            font-weight: 700;
+        .download-loading-card {
+            background: linear-gradient(135deg, rgba(26, 26, 46, 0.95), rgba(15, 23, 42, 0.9));
+            border: 2px solid rgba(139, 92, 246, 0.3);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
 
-        .download-status {
+        .download-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(139, 92, 246, 0.2);
+            border-top-color: #a78bfa;
+            border-radius: 50%;
+            margin: 0 auto 25px;
+            animation: spin 1s linear infinite;
+        }
+
+        .download-loading-card h3 {
+            color: #a78bfa;
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+
+        .download-loading-card p {
             color: #cbd5e1;
-            font-size: 1.1rem;
-            margin-bottom: 25px;
-        }
-
-        .download-subtext {
-            color: #94a3b8;
-            font-size: 0.95rem;
-            line-height: 1.6;
-        }
-
-        .download-progress {
-            width: 100%;
-            height: 8px;
-            background: rgba(102, 252, 241, 0.1);
-            border-radius: 4px;
-            margin: 20px 0;
-            overflow: hidden;
-        }
-
-        .download-progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #66fcf1, #45a29e);
-            border-radius: 4px;
-            width: 0%;
-            transition: width 0.3s ease;
+            font-size: 1em;
         }
 
         /* Responsive design */
@@ -593,7 +573,7 @@
         }
 
         .action-btn {
-            padding: 8px 16px;
+            padding: 12px 24px;
             border-radius: 8px;
             border: 1px solid;
             cursor: pointer;
@@ -638,6 +618,85 @@
 
         .delete-btn:hover {
             background: rgba(239, 68, 68, .3);
+        }
+
+        .stop-btn {
+            background: rgba(245, 158, 11, .2);
+            color: #fbbf24;
+            border-color: rgba(245, 158, 11, .4);
+        }
+
+        .stop-btn:hover {
+            background: rgba(245, 158, 11, .3);
+        }
+
+        .view-btn {
+            background: rgba(59, 130, 246, .2);
+            color: #60a5fa;
+            border-color: rgba(59, 130, 246, .4);
+        }
+
+        .view-btn:hover {
+            background: rgba(59, 130, 246, .3);
+        }
+
+        .run-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85rem;
+            color: #94a3b8;
+            margin-top: 5px;
+            align-items: center;
+        }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            border: 1px solid;
+        }
+
+        .status-running {
+            background: rgba(102, 252, 241, 0.1);
+            color: #66fcf1;
+            border-color: rgba(102, 252, 241, 0.3);
+            animation: pulse 2s infinite;
+        }
+
+        .status-completed,
+        .status-complete {
+            background: rgba(34, 197, 94, 0.1);
+            color: #4ade80;
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+
+        .status-cancelled,
+        .status-failed {
+            background: rgba(239, 68, 68, 0.1);
+            color: #f87171;
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .status-legacy {
+            background: rgba(148, 163, 184, 0.1);
+            color: #cbd5e1;
+            border-color: rgba(148, 163, 184, 0.3);
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 0.7;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.7;
+            }
         }
 
         .files-container {
@@ -784,21 +843,18 @@
         <div class="dna-strand"></div>
     </div>
 
-    <!-- Download Loading Overlay -->
-    <div class="download-overlay" id="downloadOverlay">
-        <div class="download-card">
-            <div class="spinner"></div>
-            <h2 class="download-title" id="downloadTitle">📁 Preparing Download</h2>
-            <p class="download-status" id="downloadStatus">Compressing files...</p>
-
+    <!-- DOWNLOAD LOADING OVERLAY -->
+    <div id="downloadLoading" class="download-loading">
+        <div class="download-loading-card">
+            <div class="download-spinner"></div>
+            <h3 id="downloadTitle">Preparing Download</h3>
+            <p id="downloadMessage">Packaging results...</p>
             <div class="download-progress">
                 <div class="download-progress-bar" id="downloadProgressBar"></div>
             </div>
-
-            <div class="download-subtext">
-                <div>⏳ Preparing your files for download...</div>
-                <div>📊 This may take a moment depending on file sizes</div>
-            </div>
+            <p id="downloadStatus" style="color: #94a3b8; font-size: 0.9em; margin-top: 10px;">
+                Please wait while we prepare your files...
+            </p>
         </div>
     </div>
 
@@ -875,11 +931,7 @@
     </div>
 
     <!-- User Info -->
-    <div class="user-info-container">
-        <div>👤 {{ current_name }}</div>
-        <a href="{{ url_for('index') }}" class="nav-btn">🏠 Home</a>
-        <a href="{{ url_for('logout') }}" class="logout-btn">🚪 Logout</a>
-    </div>
+    {% include 'components/navbar.html' %}
 
     <!-- Main Content -->
     <div class="container">
@@ -890,61 +942,90 @@
         <div class="run-card" id="run-{{ run['run_id'] }}">
 
             <div class="run-header">
-                <div class="run-id">{{ run["run_id"] }}</div>
+                <div class="run-info">
+                    <div class="run-id">{{ run["run_id"] }}</div>
+                    <div class="run-meta">
+                        <span class="status-badge status-{{ run['status']|lower }}">
+                            {{ run['status'] }}
+                        </span>
+
+                        <!-- Dynamic Timer for Running Instances -->
+                        {% if run['status'] == 'running' %}
+                        <span class="time-badge running-timer"
+                            data-start-time="{{ run['start_time'].timestamp() * 1000 if run['start_time'] else '' }}">
+                            ⏱️ Calculating...
+                        </span>
+                        {% else %}
+                        <span class="time-badge">
+                            🕒 {{ run['start_time'].strftime('%Y-%m-%d %H:%M') if run['start_time'] else 'Unknown' }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
 
                 <div class="run-actions">
-                    <button class="action-btn toggle-files-btn" onclick="toggleFiles(event, '{{ run['run_id'] }}')">
-                        📂 Show Files
-                    </button>
+                    {% if run['status'] == 'running' %}
+                    <form method="POST" action="{{ url_for('cancel_run', run_id=run['run_id']) }}"
+                        style="display:inline" onsubmit="return confirm('Stop this running pipeline?')">
+                        <button class="action-btn stop-btn">🛑 Stop</button>
+                    </form>
+                    {% endif %}
 
-                    <a class="action-btn download-all-btn" href="#"
-                        data-url="{{ url_for('download_all', username=run['username'], run_id=run['run_id']) }}"
-                        onclick="startDownload(this.dataset.url)">
-                        ⬇️ Download All
+                    <a href="{{ url_for('status', run_id=run['run_id']) }}" class="action-btn view-btn">
+                        👁️ View
                     </a>
 
+                    <button class="action-btn toggle-files-btn" onclick="toggleFiles(event, '{{ run['run_id'] }}')">
+                        📂 Files
+                    </button>
+
+                    <!-- Hide Zip Download if Running -->
+                    {% if run['has_files'] and run['status'] != 'running' %}
+                    <a class="action-btn download-all-btn" href="#"
+                        data-prepare-url="{{ url_for('prepare_download', run_id=run['run_id']) }}"
+                        data-download-url="{{ url_for('download_all', username=safe_username(session['user']), run_id=run['run_id']) }}"
+                        onclick="handleGlobalDownload(event, this)">
+                        ⬇️ Zip
+                    </a>
+                    {% endif %}
 
                     <form method="POST"
-                        action="{{ url_for('delete_run', username=run['username'], run_id=run['run_id']) }}"
+                        action="{{ url_for('delete_run', username=safe_username(session['user']), run_id=run['run_id']) }}"
                         style="display:inline"
                         onsubmit="return confirm('Delete this run permanently? This action cannot be undone.')">
-                        <button class="action-btn delete-btn">🗑️ Delete</button>
+                        <button class="action-btn delete-btn">🗑️</button>
                     </form>
                 </div>
             </div>
 
             <div class="files-container" id="files-{{ run['run_id'] }}">
                 <div class="file-explorer">
-                    {% macro render_tree(tree, parent="") %}
+                    {% macro render_tree(tree, run_id, path_prefix='') %}
                     {% for key, value in tree.items() %}
-                    {% if key != "__files__" %}
-                    <div class="folder">
-                        <div class="folder-header" onclick="toggleFolder(event, this)">
-                            📁 {{ key }}
-                        </div>
-                        <div class="folder-content">
-                            {{ render_tree(value, parent ~ key ~ '/') }}
-                        </div>
-                    </div>
-                    {% endif %}
-                    {% endfor %}
-
-                    {% if "__files__" in tree %}
-                    {% for file in tree["__files__"] %}
-                    <div class="file" onclick="event.stopPropagation()">
-                        📄 {{ file }}
-                        <a href="{{ url_for('download_file',
-                                username=run['username'],
-                                run_id=run['run_id'],
-                                path=parent ~ file) }}" onclick="showDownloadOverlay(event, 'single-file')">
+                    {% if key == '__files__' %}
+                    {% for file in value %}
+                    <div class="file">
+                        <span>📄 {{ file }}</span>
+                        <a href="{{ url_for('download_file', username=safe_username(session['user']), run_id=run_id, path=path_prefix + file) }}"
+                            onclick="showFileDownloadOverlay(event)">
                             Download
                         </a>
                     </div>
                     {% endfor %}
+                    {% else %}
+                    <div class="folder">
+                        <div class="folder-header" onclick="toggleFolder(event, this)">
+                            <span>📁 {{ key }}</span>
+                        </div>
+                        <div class="folder-content">
+                            {{ render_tree(value, run_id, path_prefix + key + '/') }}
+                        </div>
+                    </div>
                     {% endif %}
+                    {% endfor %}
                     {% endmacro %}
 
-                    {{ render_tree(run["file_tree"]) }}
+                    {{ render_tree(run["file_tree"], run['run_id']) }}
                 </div>
             </div>
         </div>
@@ -963,48 +1044,29 @@
         {% endif %}
     </div>
     <script>
-        function startDownload(url, type = "zip") {
-            const overlay = document.getElementById("downloadOverlay");
-            const title = document.getElementById("downloadTitle");
-            const status = document.getElementById("downloadStatus");
-            const bar = document.getElementById("downloadProgressBar");
+        // Update Elapsed Time for Running Instances
+        function updateRunningTimers() {
+            const timers = document.querySelectorAll('.running-timer');
+            const now = Date.now();
 
-            // Reset UI
-            bar.style.width = "0%";
-            overlay.classList.add("show");
+            timers.forEach(timer => {
+                const startTime = parseFloat(timer.dataset.startTime);
+                if (!isNaN(startTime)) {
+                    const elapsed = now - startTime;
+                    if (elapsed > 0) {
+                        const seconds = Math.floor((elapsed / 1000) % 60);
+                        const minutes = Math.floor((elapsed / (1000 * 60)) % 60);
+                        const hours = Math.floor((elapsed / (1000 * 60 * 60)));
 
-            title.textContent = type === "file"
-                ? "📄 Preparing File Download"
-                : "📁 Preparing ZIP Archive";
-
-            status.textContent = "Waiting for server response...";
-
-            // STEP 1: Probe server readiness
-            fetch(url, { method: "HEAD" })
-                .then(res => {
-                    if (!res.ok) throw new Error("Not ready");
-
-                    // STEP 2: Server responded → download WILL start
-                    status.textContent = "Download started...";
-                    bar.style.width = "100%";
-
-                    // STEP 3: Trigger download safely
-                    const iframe = document.createElement("iframe");
-                    iframe.style.display = "none";
-                    iframe.src = url;
-                    document.body.appendChild(iframe);
-
-                    // STEP 4: Close overlay immediately after headers
-                    setTimeout(() => {
-                        overlay.classList.remove("show");
-                        iframe.remove();
-                    }, 800);
-                })
-                .catch(() => {
-                    overlay.classList.remove("show");
-                    alert("Download failed. Please try again.");
-                });
+                        timer.textContent = `⏱️ ${hours}h ${minutes}m ${seconds}s elapsed`;
+                    }
+                }
+            });
         }
+
+        // Run immediately and then every second
+        updateRunningTimers();
+        setInterval(updateRunningTimers, 1000);
     </script>
 
     <script>
@@ -1186,98 +1248,82 @@
         }
 
         // Download overlay functions
-        function showDownloadOverlay(event, type) {
+        const downloadLoading = document.getElementById("downloadLoading");
+        const downloadTitle = document.getElementById("downloadTitle");
+        const downloadMessage = document.getElementById("downloadMessage"); // Note: ID changed in HTML
+        const downloadStatus = document.getElementById("downloadStatus");
+        const downloadProgressBar = document.getElementById("downloadProgressBar");
+        let isDownloading = false;
+
+        function handleGlobalDownload(event, element) {
             event.preventDefault();
-            const downloadOverlay = document.getElementById('downloadOverlay');
-            const downloadTitle = document.getElementById('downloadTitle');
-            const downloadStatus = document.getElementById('downloadStatus');
-            const progressBar = document.getElementById('downloadProgressBar');
-            const href = event.target.href;
+            if (isDownloading) return;
+            isDownloading = true;
 
-            // Set overlay content based on download type
-            if (type === 'single-file') {
-                downloadTitle.textContent = '📄 Preparing File Download';
-                downloadStatus.textContent = 'Preparing file for download...';
-            } else {
-                downloadTitle.textContent = '📁 Preparing ZIP Archive';
-                downloadStatus.textContent = 'Compressing files into ZIP archive...';
-            }
+            const prepareUrl = element.dataset.prepareUrl;
+            const downloadUrl = element.dataset.downloadUrl;
 
-            // Reset progress bar
-            progressBar.style.width = '0%';
+            // Show popup immediately
+            downloadLoading.classList.add("show");
+            downloadTitle.textContent = "Preparing Download";
+            downloadMessage.textContent = "Packaging results...";
+            downloadProgressBar.style.width = "100%";
+            downloadStatus.textContent = "Please wait while we prepare your files...";
 
-            // Show overlay
-            downloadOverlay.classList.add('show');
+            fetch(prepareUrl)
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.ready) throw new Error("Not ready");
 
-            // Simulate progress for better UX
-            let progress = 0;
-            const progressInterval = setInterval(() => {
-                progress += 5;
-                progressBar.style.width = `${progress}%`;
+                    // CLOSE POPUP IMMEDIATELY
+                    downloadLoading.classList.remove("show");
 
-                if (progress >= 90) {
-                    clearInterval(progressInterval);
+                    // Trigger browser download
+                    window.location.href = downloadUrl;
 
-                    // Update status message
-                    if (type === 'single-file') {
-                        downloadStatus.textContent = 'File ready! Starting download...';
-                    } else {
-                        downloadStatus.textContent = 'ZIP archive ready! Starting download...';
-                    }
-
-                    // Wait a moment then redirect
-                    setTimeout(() => {
-                        // Actually start the download
-                        window.location.href = href;
-
-                        // Hide overlay after a delay (download should have started)
-                        setTimeout(() => {
-                            downloadOverlay.classList.remove('show');
-                        }, 1000);
-                    }, 800);
-                }
-            }, 100);
-
-            // Store interval ID for cleanup
-            event.target.dataset.progressInterval = progressInterval;
-        }
-
-        // Hide download overlay (if needed elsewhere)
-        function hideDownloadOverlay() {
-            const downloadOverlay = document.getElementById('downloadOverlay');
-            downloadOverlay.classList.remove('show');
-        }
-
-        // Auto-remove flash messages
-        document.addEventListener('DOMContentLoaded', function () {
-            initializeChatbot();
-
-            // Remove flash messages after 5 seconds
-            setTimeout(() => {
-                const flashMessages = document.querySelectorAll('.flash-message');
-                flashMessages.forEach(msg => {
-                    msg.style.opacity = '0';
-                    msg.style.transform = 'translateX(100%)';
-                    setTimeout(() => msg.remove(), 300);
+                    isDownloading = false;
+                })
+                .catch(err => {
+                    console.error(err);
+                    downloadLoading.classList.remove("show");
+                    isDownloading = false;
+                    alert("❌ Failed to prepare download");
                 });
-            }, 5000);
+        }
 
-            // Handle all download links
-            document.querySelectorAll('a[href*="download"]').forEach(link => {
-                if (!link.classList.contains('download-all-btn')) {
-                    link.addEventListener('click', function (e) {
-                        showDownloadOverlay(e, 'single-file');
-                    });
-                }
-            });
+        // Single File download overlay (Simpler version)
+        // Single File download overlay
+        function showFileDownloadOverlay(event) {
+            event.preventDefault();
+            const link = event.target.closest('a');
+            if (!link) return;
 
-            // Close overlay on click outside (optional)
-            document.getElementById('downloadOverlay').addEventListener('click', function (e) {
+            const href = link.href;
+
+            downloadLoading.classList.add("show");
+            downloadTitle.textContent = "📄 Downloading File";
+            downloadMessage.textContent = "Starting download...";
+            downloadProgressBar.style.width = "100%";
+            downloadStatus.textContent = "Your download is starting...";
+
+            setTimeout(() => {
+                window.location.href = href;
+                setTimeout(() => downloadLoading.classList.remove("show"), 2000);
+            }, 500);
+        }
+
+        function hideDownloadOverlay() {
+            if (downloadLoading) downloadLoading.classList.remove('show');
+        }
+
+        // Close overlay on click outside
+        if (downloadLoading) {
+            downloadLoading.addEventListener('click', function (e) {
                 if (e.target === this) {
                     hideDownloadOverlay();
                 }
             });
-        });
+        }
     </script>
 
 </body>

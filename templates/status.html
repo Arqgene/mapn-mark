@@ -581,12 +581,7 @@
             margin-bottom: 10px;
         }
 
-        .status-loading-card p {
-            color: #cbd5e1;
-            font-size: 1em;
-        }
-
-        /* Download-specific loading overlay */
+        /* Download Loading Overlay */
         .download-loading {
             position: fixed;
             top: 0;
@@ -598,7 +593,7 @@
             display: none;
             justify-content: center;
             align-items: center;
-            z-index: 10001;
+            z-index: 10000;
             opacity: 0;
             transition: opacity 0.3s ease;
         }
@@ -607,33 +602,6 @@
             display: flex;
             opacity: 1;
             animation: fadeIn 0.3s ease;
-        }
-
-        .download-loading-card {
-            background: linear-gradient(135deg, rgba(26, 26, 46, 0.95), rgba(15, 23, 42, 0.9));
-            border: 2px solid rgba(139, 92, 246, 0.3);
-            border-radius: 20px;
-            padding: 40px;
-            text-align: center;
-            max-width: 400px;
-            width: 90%;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        }
-
-        .download-spinner {
-            width: 60px;
-            height: 60px;
-            border: 4px solid rgba(139, 92, 246, 0.2);
-            border-top-color: #a78bfa;
-            border-radius: 50%;
-            margin: 0 auto 25px;
-            animation: spin 1s linear infinite;
-        }
-
-        .download-loading-card h3 {
-            color: #a78bfa;
-            font-size: 1.5em;
-            margin-bottom: 10px;
         }
 
         .download-loading-card p {
@@ -771,48 +739,6 @@
             }
         }
 
-        /* Download Progress Animation */
-        .download-progress {
-            width: 100%;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
-            margin: 20px 0;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .download-progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #a78bfa, #7c3aed);
-            border-radius: 3px;
-            width: 0%;
-            transition: width 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .download-progress-bar::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            animation: downloadShimmer 1.5s infinite;
-        }
-
-        @keyframes downloadShimmer {
-            0% {
-                transform: translateX(-100%);
-            }
-
-            100% {
-                transform: translateX(200%);
-            }
-        }
-
         /* Responsive Design */
         @media (max-width: 768px) {
             .container {
@@ -913,7 +839,9 @@
 </head>
 
 <body data-is-running="{{ is_running | tojson }}" data-is-complete="{{ is_complete | tojson }}"
-    data-is-cancelled="{{ is_cancelled | tojson }}">
+    data-is-cancelled="{{ is_cancelled | tojson }}" data-is-failed="{{ is_failed | tojson }}"
+    data-start-time="{{ start_time }}">
+    {% include 'components/navbar.html' %}
 
     <div class="dna-background">
         <div class="dna-strand"></div>
@@ -942,6 +870,12 @@
                     <span class="status-dot"></span>
                     <span>✅ PIPELINE COMPLETE</span>
                 </div>
+                {% elif is_failed %}
+                <div class="status-indicator status-cancelled"
+                    style="border-color: #ef4444; color: #ef4444; background: rgba(239, 68, 68, 0.1);">
+                    <span class="status-dot" style="background: #ef4444;"></span>
+                    <span>❌ PIPELINE FAILED</span>
+                </div>
                 {% elif is_cancelled %}
                 <div class="status-indicator status-cancelled">
                     <span class="status-dot"></span>
@@ -950,7 +884,7 @@
                 {% else %}
                 <div class="status-indicator status-cancelled">
                     <span class="status-dot"></span>
-                    <span>⛔ PIPELINE CANCELLED</span>
+                    <span>❓ STATUS UNKNOWN</span>
                 </div>
                 {% endif %}
             </div>
@@ -960,6 +894,10 @@
                 {% if is_complete %}
                 <div class="complete-message">
                     🎉 PIPELINE COMPLETED SUCCESSFULLY
+                </div>
+                {% elif is_failed %}
+                <div class="cancelled-message" style="border-color: #ef4444; color: #f87171;">
+                    ❌ PIPELINE ENCOUNTERED AN ERROR (See logs below)
                 </div>
                 {% elif is_cancelled %}
                 <div class="cancelled-message">
@@ -1012,9 +950,13 @@
                 <button class="btn btn-danger" id="cancelBtn">
                     ⛔ CANCEL PIPELINE
                 </button>
+                <a href="{{ url_for('my_runs') }}" class="btn btn-home"
+                    style="background: rgba(102, 252, 241, 0.1); border-color: rgba(102, 252, 241, 0.5);">
+                    🏃 Run in Background
+                </a>
                 {% endif %}
 
-                {% if is_complete or is_cancelled %}
+                {% if is_complete or is_cancelled or is_failed %}
                 <button class="btn btn-download" id="downloadBtn">
                     📦 DOWNLOAD RESULTS
                 </button>
@@ -1037,9 +979,6 @@
             <div class="download-spinner"></div>
             <h3 id="downloadTitle">Preparing Download</h3>
             <p id="downloadMessage">Packaging results...</p>
-            <div class="download-progress">
-                <div class="download-progress-bar" id="downloadProgressBar"></div>
-            </div>
             <p id="downloadStatus" style="color: #94a3b8; font-size: 0.9em; margin-top: 10px;">
                 Please wait while we prepare your files...
             </p>
@@ -1094,12 +1033,20 @@
         const downloadProgressBar = document.getElementById("downloadProgressBar");
         const downloadStatus = document.getElementById("downloadStatus");
 
+        // Get initial state from data attributes
+        const isRunning = document.body.dataset.isRunning === 'true';
+        const isComplete = document.body.dataset.isComplete === 'true';
+        const isCancelled = document.body.dataset.isCancelled === 'true';
+        const isFailed = document.body.dataset.isFailed === 'true';
+        const serverStartTime = parseFloat(document.body.dataset.startTime);
+
         // State Variables
         let fetchCount = 0;
-        let startTime = Date.now();
+        // Use server start time if available (timestamp is in seconds, need ms)
+        let startTime = serverStartTime ? serverStartTime * 1000 : Date.now();
         let totalLines = 0;
         let lastUpdateTime = Date.now();
-        let isPipelineComplete = false;
+        let isPipelineComplete = isComplete || isCancelled || isFailed;
         let isCancelling = false;
         let isDownloading = false;
         let timerInterval;
@@ -1108,17 +1055,14 @@
         let downloadStartTime;
         let downloadStage = 0;
 
-        // Get initial state from data attributes
-        const isRunning = document.body.dataset.isRunning === 'true';
-        const isComplete = document.body.dataset.isComplete === 'true';
-        const isCancelled = document.body.dataset.isCancelled === 'true';
-
         /* =============================
            INITIALIZATION
         ============================= */
         function initializePage() {
             updateElapsedTime();
-            timerInterval = setInterval(updateElapsedTime, 1000);
+            if (isRunning) {
+                timerInterval = setInterval(updateElapsedTime, 1000);
+            }
             calculateStats();
 
             // Disable new analysis button if pipeline is running or cancelling
@@ -1199,7 +1143,7 @@
             downloadLoading.classList.add("show");
             downloadTitle.textContent = "Preparing Download";
             downloadMessage.textContent = "Packaging results...";
-            downloadProgressBar.style.width = "100%";
+            // downloadProgressBar.style.width = "100%"; // This element is removed from HTML
 
             fetch("{{ url_for('prepare_download', run_id=run_id) }}")
                 .then(res => res.json())
@@ -1220,226 +1164,6 @@
                     isDownloading = false;
                     showNotification("❌ Failed to prepare download", "error");
                 });
-        }
-        function showDownloadOverlay() {
-            downloadTitle.textContent = "Preparing Download";
-            downloadMessage.textContent = "Packaging results...";
-            downloadStatus.textContent = "Please wait while we prepare your files...";
-            downloadProgressBar.style.width = "0%";
-            downloadLoading.classList.add('show');
-        }
-
-        function startDownloadProgress() {
-            let progress = 0;
-            const maxProgress = 95; // Stop at 95% until download actually starts
-
-            // Stage 1: Preparing (0-30%)
-            const stage1 = setInterval(() => {
-                if (downloadStage > 0) {
-                    clearInterval(stage1);
-                    return;
-                }
-
-                progress += 0.5;
-                if (progress > 30) progress = 30;
-
-                updateDownloadProgress('preparing', progress);
-                downloadProgressBar.style.width = `${progress}%`;
-
-                // If stuck in stage 1 for too long, move to stage 2
-                if (Date.now() - downloadStartTime > 5000 && downloadStage === 0) {
-                    downloadStage = 1;
-                }
-            }, 100);
-
-            // Stage 2: Server Processing (30-70%)
-            const stage2 = setInterval(() => {
-                if (downloadStage > 1) {
-                    clearInterval(stage2);
-                    return;
-                }
-
-                progress += 0.8;
-                if (progress > 70) progress = 70;
-
-                updateDownloadProgress('processing', progress);
-                downloadProgressBar.style.width = `${progress}%`;
-
-                // If stuck in stage 2 for too long, move to stage 3
-                if (Date.now() - downloadStartTime > 10000 && downloadStage === 1) {
-                    downloadStage = 2;
-                }
-            }, 100);
-
-            // Stage 3: Starting Download (70-95%)
-            const stage3 = setInterval(() => {
-                if (downloadStage > 2) {
-                    clearInterval(stage3);
-                    return;
-                }
-
-                progress += 0.3;
-                if (progress > maxProgress) progress = maxProgress;
-
-                updateDownloadProgress('starting', progress);
-                downloadProgressBar.style.width = `${progress}%`;
-
-                // If stuck in stage 3 for too long, complete anyway
-                if (Date.now() - downloadStartTime > 20000) {
-                    downloadStage = 3;
-                    completeDownload();
-                }
-            }, 100);
-
-            // Store intervals for cleanup
-            window.downloadProgressIntervals = [stage1, stage2, stage3];
-        }
-
-        function updateDownloadProgress(stage, percentage) {
-            const stageMessages = {
-                'preparing': {
-                    title: "Preparing Download",
-                    message: "Packaging results...",
-                    status: "Initializing download..."
-                },
-                'processing': {
-                    title: "Processing Files",
-                    message: "Compressing data...",
-                    status: "Processing file contents..."
-                },
-                'starting': {
-                    title: "Starting Download",
-                    message: "Your download will begin shortly...",
-                    status: "Almost ready..."
-                },
-                'downloading': {
-                    title: "Download Started!",
-                    message: "Your download is now in progress",
-                    status: "✅ Download has started!"
-                },
-                'complete': {
-                    title: "Download Complete",
-                    message: "Your files are ready",
-                    status: "✅ Download completed successfully!"
-                },
-                'error': {
-                    title: "Download Failed",
-                    message: "Unable to start download",
-                    status: "❌ Please try again"
-                }
-            };
-
-            const stageInfo = stageMessages[stage] || stageMessages['preparing'];
-            downloadTitle.textContent = stageInfo.title;
-            downloadMessage.textContent = stageInfo.message;
-            downloadStatus.textContent = stageInfo.status;
-        }
-
-        function triggerDownloadWithDetection() {
-            const downloadUrl = "{{ url_for('status_download', run_id=run_id) }}";
-
-
-
-            // Method 1: Create a hidden anchor element
-            const anchor = document.createElement('a');
-            anchor.href = downloadUrl;
-            anchor.download = `mapnmark_results_{{ run_id }}.zip`;
-            anchor.style.display = 'none';
-            document.body.appendChild(anchor);
-
-            // Store the anchor for cleanup
-            window.downloadAnchor = anchor;
-
-            // Method 2: Use fetch to detect when server responds
-            fetch(downloadUrl, { method: 'HEAD' })
-                .then(response => {
-                    if (response.ok) {
-                        // Server is ready, actually trigger the download
-                        downloadStage = 2; // Move to starting stage
-                        updateDownloadProgress('starting', 95);
-
-                        // Simulate a brief wait then click the anchor
-                        setTimeout(() => {
-                            anchor.click();
-
-                            // Wait a moment then assume download started
-                            setTimeout(() => {
-                                downloadStage = 3;
-                                updateDownloadProgress('downloading', 100);
-
-                                // Complete after download has "started"
-                                setTimeout(completeDownload, 1500);
-                            }, 500);
-                        }, 1000);
-                    } else {
-                        throw new Error('Server not ready');
-                    }
-                })
-                .catch(error => {
-                    console.error('Download error:', error);
-
-                    // Fallback: Just trigger the download anyway
-                    downloadStage = 2;
-                    updateDownloadProgress('starting', 95);
-
-                    setTimeout(() => {
-                        anchor.click();
-
-                        // Assume download started
-                        setTimeout(() => {
-                            downloadStage = 3;
-                            updateDownloadProgress('downloading', 100);
-                            setTimeout(completeDownload, 1500);
-                        }, 1000);
-                    }, 500);
-                });
-
-            // Set a timeout to force completion if something goes wrong
-            downloadTimeout = setTimeout(() => {
-                if (isDownloading) {
-                    console.warn('Download timeout - forcing completion');
-                    downloadStage = 3;
-                    updateDownloadProgress('downloading', 100);
-                    completeDownload();
-                }
-            }, 25000); // 25 second timeout
-        }
-
-        function completeDownload() {
-            // Clear all download intervals
-            if (window.downloadProgressIntervals) {
-                window.downloadProgressIntervals.forEach(interval => clearInterval(interval));
-            }
-
-            // Clear timeout
-            clearTimeout(downloadTimeout);
-
-            // Update to complete state
-            downloadStage = 4;
-            updateDownloadProgress('complete', 100);
-            downloadProgressBar.style.width = '100%';
-
-            // Wait a moment to show completion, then hide
-            setTimeout(() => {
-                downloadLoading.classList.remove('show');
-                isDownloading = false;
-
-                // Clean up anchor element
-                if (window.downloadAnchor && window.downloadAnchor.parentNode) {
-                    window.downloadAnchor.parentNode.removeChild(window.downloadAnchor);
-                }
-
-                // Re-enable download button
-                if (downloadBtn) {
-                    setTimeout(() => {
-                        downloadBtn.disabled = false;
-                        downloadBtn.style.opacity = "1";
-                    }, 500);
-                }
-
-                // Show success notification
-                showNotification('✅ Download started! Check your downloads folder.', 'success');
-            }, 2000);
         }
 
         // Attach download handler if download button exists

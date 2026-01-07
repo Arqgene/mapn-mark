@@ -118,6 +118,20 @@ def init_db():
         connection.commit()
         print("Users table checked/created successfully.")
         
+        # Create Pipeline Runs Table
+        create_runs_table_query = """
+        CREATE TABLE IF NOT EXISTS pipeline_runs (
+            run_id VARCHAR(50) PRIMARY KEY,
+            user_email VARCHAR(255) NOT NULL,
+            status VARCHAR(255) NOT NULL,
+            start_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+            end_time DATETIME,
+            FOREIGN KEY (user_email) REFERENCES users(email) ON DELETE CASCADE
+        );
+        """
+        cursor.execute(create_runs_table_query)
+        print("Pipeline runs table checked/created successfully.")
+        
         # MIGRATION: Ensure session_token column exists
         try:
             cursor.execute("SELECT session_token FROM users LIMIT 1")
@@ -130,7 +144,36 @@ def init_db():
 
     except Error as e:
         print(f"Error initializing database: {e}")
+    
+    # MIGRATION 2: Fix status column length (Fixes 'Data truncated' error)
+    try:
+        cursor.execute("ALTER TABLE pipeline_runs MODIFY COLUMN status VARCHAR(255)")
+        connection.commit()
+        print("Migration: status column updated to VARCHAR(255)")
+    except Error as e:
+        print(f"Migration warning (status): {e}")
+
     finally:
         if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def get_run_by_id(run_id):
+    """Fetches a pipeline run by run_id from the database."""
+    connection = get_db_connection()
+    if connection is None:
+        return None
+
+    try:
+        cursor = connection.cursor(dictionary=True)
+        query = "SELECT * FROM pipeline_runs WHERE run_id = %s"
+        cursor.execute(query, (run_id,))
+        run = cursor.fetchone()
+        return run
+    except Error as e:
+        print(f"Error executing query: {e}")
+        return None
+    finally:
+        if connection and connection.is_connected():
             cursor.close()
             connection.close()

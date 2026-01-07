@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create New User | MapNMark</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='index_styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Centering wrapper */
+        .center-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: calc(100vh - 80px);
+            padding: 20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Enhanced form container */
+        .form-container {
+            max-width: 550px;
+            width: 100%;
+            background: rgba(15, 22, 36, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(102, 252, 241, 0.25);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow:
+                0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(102, 252, 241, 0.1),
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Top accent border */
+        .form-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg,
+                    #66fcf1 0%,
+                    #45a29e 50%,
+                    #66fcf1 100%);
+            border-radius: 20px 20px 0 0;
+        }
+
+        /* Header styling */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .lab-title {
+            font-size: 2.5em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #66fcf1 0%, #45a29e 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.5px;
+        }
+
+        .lab-subtitle {
+            color: #a0aec0;
+            font-size: 1.1em;
+            font-weight: 400;
+            margin-bottom: 2rem;
+            letter-spacing: 0.3px;
+        }
+
+        /* Form group styling */
+        .form-group {
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .form-group label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #66fcf1;
+            font-size: 0.9em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        .form-group label i {
+            font-size: 1.1em;
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Input wrapper - FIXED: Remove transform from wrapper */
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 20px;
+            color: #66fcf1;
+            font-size: 1.1em;
+            z-index: 1;
+            pointer-events: none;
+            transition: color 0.3s ease;
+        }
+
+        /* Input and select styling */
+        .input-wrapper input,
+        .input-wrapper select {
+            width: 100%;
+            padding: 18px 20px 18px 50px;
+            background: rgba(26, 32, 44, 0.9);
+            border: 2px solid rgba(102, 252, 241, 0.15);
+            border-radius: 12px;
+            color: #ffffff;
+            font-size: 1em;
+            font-weight: 400;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            outline: none;
+            position: relative;
+            z-index: 2;
+        }
+
+        .input-wrapper input::placeholder {
+            color: #718096;
+        }
+
+        /* Focus states - Apply transform only to input, not wrapper */
+        .input-wrapper input:focus,
+        .input-wrapper select:focus {
+            border-color: #66fcf1;
+            box-shadow:
+                0 0 0 3px rgba(102, 252, 241, 0.1),
+                0 0 25px rgba(102, 252, 241, 0.2);
+            background: rgba(26, 32, 44, 1);
+            transform: translateY(-1px);
+            /* Apply transform only to input */
+        }
+
+        /* Keep icons static */
+        .input-wrapper input:focus~.input-icon,
+        .input-wrapper select:focus~.input-icon {
+            transform: none !important;
+            /* Ensure icons don't move */
+        }
+
+        /* Select specific styling */
+        .input-wrapper select {
+            appearance: none;
+            cursor: pointer;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2366fcf1' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 20px center;
+            background-size: 16px;
+            padding-right: 50px;
+        }
+
+        /* Password toggle - FIXED: Keep icon static */
+        .toggle-icon {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            /* Center vertically */
+            color: #66fcf1;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 3;
+            /* Higher z-index to stay above */
+            background: rgba(26, 32, 44, 0.8);
+            padding: 8px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+        }
+
+        .toggle-icon:hover {
+            color: #ffffff;
+            background: rgba(102, 252, 241, 0.2);
+            transform: translateY(-50%) scale(1.1);
+            /* Maintain vertical centering */
+        }
+
+        /* Ensure toggle icon doesn't move on input focus */
+        .input-wrapper input:focus~.toggle-icon {
+            transform: translateY(-50%);
+            /* Keep it centered */
+        }
+
+        /* Submit button */
+        .submit-container {
+            margin-top: 40px;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 20px;
+            background: linear-gradient(135deg,
+                    rgba(102, 252, 241, 0.1) 0%,
+                    rgba(69, 162, 158, 0.1) 100%);
+            border: 2px solid #66fcf1;
+            border-radius: 12px;
+            color: #66fcf1;
+            font-size: 1.1em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Button shine effect */
+        .submit-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg,
+                    transparent 0%,
+                    rgba(102, 252, 241, 0.2) 50%,
+                    transparent 100%);
+            transition: left 0.6s ease;
+        }
+
+        .submit-btn:hover {
+            background: linear-gradient(135deg,
+                    rgba(102, 252, 241, 0.2) 0%,
+                    rgba(69, 162, 158, 0.2) 100%);
+            box-shadow: 0 0 35px rgba(102, 252, 241, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .submit-btn:hover::before {
+            left: 100%;
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .submit-btn:disabled:hover::before {
+            left: -100%;
+        }
+
+        /* Flash messages */
+        .flash-message {
+            margin-bottom: 30px;
+            padding: 20px;
+            border-radius: 12px;
+            font-weight: 500;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            animation: slideIn 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .flash-success {
+            background: rgba(72, 187, 120, 0.15);
+            border: 1px solid rgba(72, 187, 120, 0.3);
+            color: #48bb78;
+        }
+
+        .flash-error {
+            background: rgba(245, 101, 101, 0.15);
+            border: 1px solid rgba(245, 101, 101, 0.3);
+            color: #f56565;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .center-wrapper {
+                padding: 15px;
+                min-height: calc(100vh - 60px);
+            }
+
+            .form-container {
+                padding: 30px 25px;
+                margin: 0;
+                max-width: 100%;
+            }
+
+            .lab-title {
+                font-size: 2em;
+            }
+
+            .lab-subtitle {
+                font-size: 1em;
+            }
+
+            .input-wrapper input,
+            .input-wrapper select {
+                padding: 16px 20px 16px 45px;
+                font-size: 0.95em;
+            }
+
+            .toggle-icon {
+                padding: 6px;
+                width: 32px;
+                height: 32px;
+                right: 15px;
+            }
+
+            .submit-btn {
+                padding: 18px;
+                font-size: 1em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .form-container {
+                padding: 25px 20px;
+            }
+
+            .lab-title {
+                font-size: 1.8em;
+            }
+
+            .input-wrapper input,
+            .input-wrapper select {
+                padding: 14px 15px 14px 40px;
+            }
+        }
+
+        /* Hover effect for form icons */
+        .form-group:hover .input-icon {
+            color: #ffffff;
+        }
+
+        /* Focus active state */
+        .form-group:focus-within label {
+            color: #ffffff;
+        }
+
+        .form-group:focus-within .input-icon {
+            color: #ffffff;
+        }
+
+        /* Password strength indicator */
+        .password-strength {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .password-strength-bar {
+            height: 100%;
+            width: 0%;
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        /* Remove the problematic focus-active styles */
+        .form-group.focus-active {
+            /* Remove any transforms that might affect children */
+        }
+    </style>
+</head>
+
+<body>
+    {% include 'components/navbar.html' %}
+
+    <!-- DNA Background -->
+    <div class="dna-background">
+        <div class="dna-strand"></div>
+        <div class="dna-strand"></div>
+        <div class="dna-strand"></div>
+        <div class="dna-strand"></div>
+        <div class="dna-strand"></div>
+    </div>
+
+    <div class="container center-wrapper">
+        <div class="form-container">
+            <div class="header">
+                <h1 class="lab-title">Create User</h1>
+                <p class="lab-subtitle">Add a new user to the MapNMark system</p>
+            </div>
+
+            <div id="message" class="flash-message" style="display: none;"></div>
+
+            <form id="createUserForm" class="form-grid" style="display: flex; flex-direction: column; gap: 25px;">
+                <!-- Email Field -->
+                <div class="form-group">
+                    <label for="email">
+                        <i class="fas fa-envelope"></i>
+                        Email Address
+                    </label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-envelope input-icon"></i>
+                        <input type="email" id="email" name="email" placeholder="user@example.com" required>
+                    </div>
+                </div>
+
+                <!-- Password Field -->
+                <div class="form-group">
+                    <label for="password">
+                        <i class="fas fa-lock"></i>
+                        Password
+                    </label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-lock input-icon"></i>
+                        <input type="password" id="password" name="password" placeholder="Enter secure password"
+                            required>
+                        <span class="toggle-icon" id="togglePassword">
+                            <i class="fas fa-eye"></i>
+                        </span>
+                    </div>
+                    <div class="password-strength" id="passwordStrength">
+                        <div class="password-strength-bar" id="passwordStrengthBar"></div>
+                    </div>
+                </div>
+
+                <!-- Name Field -->
+                <div class="form-group">
+                    <label for="name">
+                        <i class="fas fa-user"></i>
+                        Full Name
+                    </label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-user input-icon"></i>
+                        <input type="text" id="name" name="name" placeholder="John Doe" required>
+                    </div>
+                </div>
+
+                <!-- Role Field -->
+                <div class="form-group">
+                    <label for="role">
+                        <i class="fas fa-shield-alt"></i>
+                        User Role
+                    </label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-shield-alt input-icon"></i>
+                        <select id="role" name="role">
+                            <option value="user" selected>User</option>
+                            <option value="admin">Administrator</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="submit-container">
+                    <button type="submit" class="submit-btn" id="submitBtn">
+                        <i class="fas fa-user-plus"></i>
+                        <span class="btn-text">Create User</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('createUserForm');
+            const messageDiv = document.getElementById('message');
+            const submitBtn = document.getElementById('submitBtn');
+            const togglePassword = document.getElementById('togglePassword');
+            const passwordInput = document.getElementById('password');
+            const btnText = submitBtn.querySelector('.btn-text');
+            const passwordStrength = document.getElementById('passwordStrength');
+            const passwordStrengthBar = document.getElementById('passwordStrengthBar');
+
+            // Toggle password visibility
+            togglePassword.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                const icon = this.querySelector('i');
+                icon.className = type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+
+                // Keep focus on password input
+                passwordInput.focus();
+            });
+
+            // Password strength indicator
+            passwordInput.addEventListener('input', function () {
+                const password = this.value;
+                let strength = 0;
+
+                if (password.length > 0) {
+                    passwordStrength.style.display = 'block';
+
+                    // Length check
+                    if (password.length >= 8) strength += 25;
+                    if (password.length >= 12) strength += 10;
+
+                    // Complexity checks
+                    if (/[A-Z]/.test(password)) strength += 25;
+                    if (/[0-9]/.test(password)) strength += 25;
+                    if (/[^A-Za-z0-9]/.test(password)) strength += 15;
+
+                    // Cap at 100
+                    strength = Math.min(strength, 100);
+
+                    // Update bar
+                    passwordStrengthBar.style.width = `${strength}%`;
+
+                    // Color based on strength
+                    if (strength < 50) {
+                        passwordStrengthBar.style.background = '#f56565';
+                    } else if (strength < 75) {
+                        passwordStrengthBar.style.background = '#ed8936';
+                    } else {
+                        passwordStrengthBar.style.background = '#48bb78';
+                    }
+                } else {
+                    passwordStrength.style.display = 'none';
+                }
+            });
+
+            // Form submission
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+
+                // Get form data
+                const email = document.getElementById('email').value.trim();
+                const password = document.getElementById('password').value.trim();
+                const name = document.getElementById('name').value.trim();
+                const role = document.getElementById('role').value;
+
+                // Validation
+                if (!email || !password || !name) {
+                    showMessage('All fields are required.', 'flash-error');
+                    return;
+                }
+
+                // Email validation
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email)) {
+                    showMessage('Please enter a valid email address.', 'flash-error');
+                    return;
+                }
+
+                // Password strength validation
+                if (password.length < 6) {
+                    showMessage('Password should be at least 6 characters long.', 'flash-error');
+                    return;
+                }
+
+                // Disable submit button and show loading state
+                submitBtn.disabled = true;
+                const originalHTML = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span class="btn-text">Creating...</span>';
+
+                try {
+                    // Send data to backend
+                    const response = await fetch('/api/create-user', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            email: email,
+                            password: password,
+                            name: name,
+                            role: role
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        showMessage(`✓ User "${name}" (${email}) created successfully as ${role}.`, 'flash-success');
+                        // Clear form after successful creation
+                        form.reset();
+                        passwordStrength.style.display = 'none';
+                        // Focus on email field for next entry
+                        document.getElementById('email').focus();
+                    } else {
+                        showMessage(`✗ ${result.error || result.message || 'Failed to create user'}`, 'flash-error');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    showMessage('✗ Network error. Please check your connection and try again.', 'flash-error');
+                } finally {
+                    // Re-enable submit button
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalHTML;
+                }
+            });
+
+            // Remove problematic JavaScript that was moving icons
+            // The CSS now handles all focus states properly
+
+            // Function to show messages
+            function showMessage(text, type) {
+                messageDiv.innerHTML = `<span>${text}</span>`;
+                messageDiv.className = `flash-message ${type}`;
+                messageDiv.style.display = 'flex';
+
+                // Force reflow for animation
+                void messageDiv.offsetWidth;
+
+                // Auto-hide success messages after 5 seconds
+                if (type === 'flash-success') {
+                    setTimeout(() => {
+                        messageDiv.style.opacity = '0';
+                        messageDiv.style.transform = 'translateY(-10px)';
+                        setTimeout(() => {
+                            messageDiv.style.display = 'none';
+                            messageDiv.style.opacity = '1';
+                            messageDiv.style.transform = 'translateY(0)';
+                        }, 300);
+                    }, 5000);
+                }
+            }
+
+            // Real-time email validation with visual feedback
+            const emailInput = document.getElementById('email');
+            emailInput.addEventListener('input', function () {
+                const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.value);
+                if (this.value && !isValid) {
+                    this.style.borderColor = '#f56565';
+                    this.style.boxShadow = '0 0 0 3px rgba(245, 101, 101, 0.1)';
+                } else {
+                    this.style.borderColor = '';
+                    this.style.boxShadow = '';
+                }
+            });
+
+            // Add keyboard shortcut for form submission (Ctrl/Cmd + Enter)
+            form.addEventListener('keydown', function (e) {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    form.dispatchEvent(new Event('submit'));
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

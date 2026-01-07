@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gene Comparison Results | MapNMark</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='index_styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='fasta_cmp.css') }}">
+    <style>
+        /* Basic styling to make it functional */
+        .seq-action {
+            cursor: pointer;
+        }
+
+        .sequence-preview {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .sequence-preview.expanded {
+            max-height: 500px;
+        }
+    </style>
+</head>
+
+<body>
+    {% include 'components/navbar.html' %}
+    <div class="main-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="title-section">
+                    <h1 class="main-title">🧬 Gene Comparison Analysis</h1>
+                    <div class="file-info">
+                        <span class="file-badge">{{ filename1 }}</span>
+                        <span>vs</span>
+                        <span class="file-badge">{{ filename2 }}</span>
+                    </div>
+                </div>
+
+                <div class="header-actions">
+                    <a href="{{ url_for('index') }}" class="action-btn back-btn">
+                        Back to Dashboard
+                    </a>
+
+                </div>
+            </div>
+        </header>
+
+        <!-- Summary Statistics -->
+        <div class="summary-stats">
+            <div class="stat-card">
+                <div class="stat-content">
+                    <div class="stat-text">
+                        <div class="stat-value">{{ results|length }}</div>
+                        <div class="stat-label">Total Genes Compared</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-content">
+                    <div class="stat-text">
+                        <div class="stat-value">{{ results|selectattr('status', 'equalto', 'Common')|list|length }}
+                        </div>
+                        <div class="stat-label">Common Genes</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-content">
+                    <div class="stat-text">
+                        <div class="stat-value">{{ results|selectattr('status', 'equalto', 'Unique to File
+                            1')|list|length }}</div>
+                        <div class="stat-label">Unique to File 1</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-content">
+                    <div class="stat-text">
+                        <div class="stat-value">{{ results|selectattr('status', 'equalto', 'Unique to File
+                            2')|list|length }}</div>
+                        <div class="stat-label">Unique to File 2</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Table -->
+        <div class="results-container">
+            <div class="results-header">
+                <h2 class="results-title">
+                    Detailed Comparison Results
+                </h2>
+                <div class="results-count">
+                    {{ results|length }} Records
+                </div>
+            </div>
+
+            {% if results %}
+            <div class="scroll-container">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 15%;">Gene ID</th>
+                            <th style="width: 15%;">Status</th>
+                            <th style="width: 15%;">Sequence Lengths</th>
+                            <th style="width: 55%;">Sequence Preview</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in results %}
+                        <tr>
+                            <td>
+                                <div class="gene-id-container">
+                                    <span class="gene-id">{{ row.id }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="status-container">
+                                    <span class="status-badge 
+                                        {% if 'Common' in row.status %}status-common{% endif %}
+                                        {% if 'Unique to File 1' in row.status %}status-unique1{% endif %}
+                                        {% if 'Unique to File 2' in row.status %}status-unique2{% endif %}">
+                                        {{ row.status }}
+                                    </span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="lengths-display">
+                                    <div class="length-item">
+                                        <div class="length-label">File 1:</div>
+                                        <div class="length-value">{{ row.len1 }} bp</div>
+                                    </div>
+                                    <div class="length-item">
+                                        <div class="length-label">File 2:</div>
+                                        <div class="length-value">{{ row.len2 }} bp</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="sequence-container">
+                                    <div class="sequence-header">
+                                        <div class="sequence-title">
+                                            Sequence Comparison
+                                        </div>
+
+                                    </div>
+                                    <div class="sequence-preview" id="sequence-preview-{{ loop.index0 }}">
+                                        {{ row.diff | safe }}
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <h3>No Comparison Results Found</h3>
+                <p>The gene comparison analysis did not yield any results. Please check your input files and try again.
+                </p>
+                <a href="{{ url_for('index') }}" class="action-btn back-btn">
+                    Try Another Comparison
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Summary Footer -->
+        <div class="summary-footer">
+            <p class="summary-text">
+                🧬 <strong>Analysis Summary:</strong> Successfully compared
+                <span class="summary-highlight">{{ results|length }}</span> genes between
+                <span class="summary-highlight">{{ filename1 }}</span> and
+                <span class="summary-highlight">{{ filename2 }}</span>.
+                Found
+                <span class="summary-highlight">{{ results|selectattr('status', 'equalto', 'Common')|list|length
+                    }}</span> common genes,
+                <span class="summary-highlight">{{ results|selectattr('status', 'equalto', 'Unique to File
+                    1')|list|length }}</span> unique to File 1, and
+                <span class="summary-highlight">{{ results|selectattr('status', 'equalto', 'Unique to File
+                    2')|list|length }}</span> unique to File 2.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        console.log('Gene Comparison Results script loaded');
+        // Store sequences data
+        const sequencesData = [
+            {% for row in results %}
+        {
+            id: "{{ row.id }}",
+                sequence: `{{ row.diff | safe }}`,
+                    status: "{{ row.status }}",
+                        len1: { { row.len1 } },
+            len2: { { row.len2 } }
+        } {% if not loop.last %}, {% endif %}
+        {% endfor %}
+        ];
+
+
+
+
+
+        // Export results
+
+
+        // Initialize event listeners
+        document.addEventListener('DOMContentLoaded', function () {
+            // Export button
+            const exportBtn = document.getElementById('exportBtn');
+            if (exportBtn) {
+                exportBtn.addEventListener('click', exportResults);
+            }
+
+            // Clean up any remaining special symbols from sequences
+            document.querySelectorAll('.sequence-preview').forEach(preview => {
+                preview.innerHTML = preview.innerHTML.replace(/class="match"/g, 'class="match"');
+                preview.innerHTML = preview.innerHTML.replace(/class="mismatch"/g, 'class="mismatch"');
+                preview.innerHTML = preview.innerHTML.replace(/class="unique"/g, 'class="unique"');
+            });
+        });
+    </script>
+</body>
+
+</html>

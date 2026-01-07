@@ -1,8 +1,25 @@
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
 .env
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# Project specific
 diag_file/test.fastq
-pipeline_runs/*
-!pipeline_runs/scripts/
-!pipeline_runs/scripts/*.sh
 *.log
