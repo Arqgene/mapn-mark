@@ -43,12 +43,7 @@ for tool in "${TOOLS[@]}"; do
     fi
 
     if command -v $tool &> /dev/null; then
-        # Capture version, filtering out potential warnings (like locale issues)
-        version=$($tool --version 2>&1 | grep -v "WARNING" | head -n 1 | tr -d '"')
-        if [ -z "$version" ]; then
-             version="Installed"
-        fi
-        echo "    { \"name\": \"$tool\", \"installed\": true, \"version\": \"$version\" }"
+        echo "    { \"name\": \"$tool\", \"installed\": true, \"version\": null }"
     else
         echo "    { \"name\": \"$tool\", \"installed\": false, \"version\": null }"
     fi
