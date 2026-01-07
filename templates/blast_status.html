@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Processing BLAST | MapNMark</title>
+    <!-- Re-using existing styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='index_styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dark-bg: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.95);
+            --border-color: rgba(102, 252, 241, 0.15);
+            --text-primary: #f1f5f9;
+            --accent-color: #66fcf1;
+            --accent-gradient: linear-gradient(135deg, #66fcf1 0%, #45a29e 100%);
+            --success-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            --error-gradient: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            --warning-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: var(--text-primary);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            background-image:
+                radial-gradient(circle at 15% 50%, rgba(76, 29, 149, 0.15) 0%, transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(56, 189, 248, 0.1) 0%, transparent 25%);
+        }
+
+        .processing-container {
+            padding-top: 120px;
+            padding-bottom: 80px;
+        }
+
+        .status-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 3rem 2.5rem;
+            max-width: 800px;
+            margin: 0 auto;
+            box-shadow:
+                0 20px 40px rgba(0, 0, 0, 0.3),
+                0 0 80px rgba(102, 252, 241, 0.05);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .status-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--accent-gradient);
+        }
+
+        /* Success/Failure states */
+        .status-card.success::before {
+            background: var(--success-gradient);
+        }
+
+        .status-card.error::before {
+            background: var(--error-gradient);
+        }
+
+        .status-card.warning::before {
+            background: var(--warning-gradient);
+        }
+
+        .run-id {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: rgba(102, 252, 241, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--accent-color);
+            border: 1px solid rgba(102, 252, 241, 0.2);
+        }
+
+        .status-icon {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 2rem;
+            position: relative;
+        }
+
+        .processing-icon {
+            position: relative;
+        }
+
+        .processing-icon .spinner {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 8px solid rgba(102, 252, 241, 0.1);
+            border-top-color: var(--accent-color);
+            border-radius: 50%;
+            animation: spin 1.5s linear infinite;
+        }
+
+        .processing-icon .inner-circle {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 80px;
+            height: 80px;
+            background: rgba(102, 252, 241, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .processing-icon .inner-circle i {
+            font-size: 2.5rem;
+            color: var(--accent-color);
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .status-icon.success i,
+        .status-icon.error i,
+        .status-icon.warning i {
+            font-size: 5rem;
+            display: block;
+            text-align: center;
+        }
+
+        .status-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .processing-title {
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .success-title {
+            background: var(--success-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .error-title {
+            background: var(--error-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .warning-title {
+            background: var(--warning-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .status-subtitle {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 1.125rem;
+            margin-bottom: 3rem;
+            line-height: 1.6;
+        }
+
+        /* Progress indicators */
+        .progress-section {
+            margin: 2.5rem 0;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .progress-label {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 1.125rem;
+        }
+
+        .progress-percentage {
+            font-weight: 700;
+            color: var(--accent-color);
+            font-size: 1.25rem;
+        }
+
+        .progress-bar {
+            height: 10px;
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent-gradient);
+            border-radius: 5px;
+            transition: width 0.5s ease;
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg,
+                    transparent 0%,
+                    rgba(255, 255, 255, 0.4) 50%,
+                    transparent 100%);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(100%);
+            }
+        }
+
+        /* Step indicators */
+        .steps-container {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            margin: 3rem 0;
+        }
+
+        .steps-container::before {
+            content: '';
+            position: absolute;
+            top: 24px;
+            left: 20px;
+            right: 20px;
+            height: 2px;
+            background: rgba(102, 252, 241, 0.2);
+            z-index: 1;
+        }
+
+        .step {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            flex: 1;
+        }
+
+        .step-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(30, 41, 59, 0.9);
+            border: 2px solid rgba(102, 252, 241, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 0.75rem;
+            font-weight: 600;
+            color: #94a3b8;
+            transition: all 0.3s ease;
+        }
+
+        .step.active .step-icon {
+            background: var(--accent-color);
+            border-color: var(--accent-color);
+            color: var(--dark-bg);
+            box-shadow: 0 0 20px rgba(102, 252, 241, 0.3);
+        }
+
+        .step.completed .step-icon {
+            background: var(--accent-color);
+            border-color: var(--accent-color);
+            color: var(--dark-bg);
+        }
+
+        .step-label {
+            font-size: 0.875rem;
+            color: #94a3b8;
+        }
+
+        .step.active .step-label {
+            color: var(--accent-color);
+            font-weight: 600;
+        }
+
+        /* Info cards */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .info-card {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(102, 252, 241, 0.1);
+            border-radius: 12px;
+            padding: 1.25rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .info-card:hover {
+            border-color: var(--accent-color);
+            transform: translateY(-2px);
+        }
+
+        .info-card i {
+            font-size: 1.5rem;
+            color: var(--accent-color);
+            margin-bottom: 0.75rem;
+        }
+
+        .info-card h6 {
+            font-size: 0.875rem;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+        }
+
+        .info-card p {
+            font-weight: 600;
+            font-size: 1.125rem;
+            margin: 0;
+        }
+
+        /* Action buttons */
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 3rem;
+        }
+
+        .btn {
+            padding: 0.875rem 2rem;
+            border-radius: 10px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .btn-primary {
+            background: var(--accent-gradient);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 252, 241, 0.3);
+            color: white;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+
+        .btn-outline:hover {
+            background: var(--accent-color);
+            color: var(--dark-bg);
+        }
+
+        .btn-error {
+            background: var(--error-gradient);
+            color: white;
+        }
+
+        /* Error log */
+        .error-log {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            display: none;
+        }
+
+        .error-log.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .error-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .error-header h5 {
+            color: #ef4444;
+            margin: 0;
+        }
+
+        .log-content {
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 0.875rem;
+            color: #fca5a5;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+            line-height: 1.5;
+        }
+
+        /* Timer */
+        .timer {
+            text-align: center;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--accent-color);
+            margin: 1.5rem 0;
+            font-feature-settings: "tnum";
+        }
+
+        @media (max-width: 768px) {
+            .processing-container {
+                padding-top: 100px;
+                padding-bottom: 40px;
+            }
+
+            .status-card {
+                padding: 2rem 1.5rem;
+            }
+
+            .status-title {
+                font-size: 2rem;
+            }
+
+            .steps-container {
+                flex-direction: column;
+                gap: 2rem;
+            }
+
+            .steps-container::before {
+                display: none;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+
+        /* Terminal Styles */
+        .terminal-container {
+            margin: 2rem 0;
+            background: #1e1e1e;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .terminal-header {
+            background: #2d2d2d;
+            padding: 0.5rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: #ccc;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .terminal-controls {
+            display: flex;
+            gap: 6px;
+        }
+
+        .terminal-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .terminal-dot.red {
+            background: #ff5f56;
+        }
+
+        .terminal-dot.yellow {
+            background: #ffbd2e;
+        }
+
+        .terminal-dot.green {
+            background: #27c93f;
+        }
+
+        .terminal-window {
+            height: 250px;
+            padding: 1rem;
+            overflow-y: auto;
+            background: #0c0c0c;
+            /* Scrollbar styling */
+            scrollbar-width: thin;
+            scrollbar-color: #4a4a4a #0c0c0c;
+        }
+
+        .terminal-window::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .terminal-window::-webkit-scrollbar-track {
+            background: #0c0c0c;
+        }
+
+        .terminal-window::-webkit-scrollbar-thumb {
+            background: #4a4a4a;
+            border-radius: 4px;
+        }
+
+        .terminal-content {
+            margin: 0;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #d4d4d4;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+
+<body>
+
+    {% include 'components/navbar.html' %}
+
+    <div class="container processing-container">
+        <div
+            class="status-card {% if run.status == 'failed' %}error{% elif run.status == 'cancelled' %}warning{% else %}running{% endif %}">
+            <div class="run-id">
+                <i class="fas fa-hashtag me-2"></i>{{ run.run_id }}
+            </div>
+
+            {% if run.status == 'failed' %}
+            <!-- Error State -->
+            <div class="status-icon error">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <h2 class="status-title error-title">Analysis Failed</h2>
+            <p class="status-subtitle">We encountered an error while processing your BLAST request.</p>
+
+            <div class="info-grid">
+                <div class="info-card">
+                    <i class="fas fa-clock"></i>
+                    <h6>Started</h6>
+                    <p>{{ run.created_at.strftime('%H:%M') }}</p>
+                </div>
+                <div class="info-card">
+                    <i class="fas fa-times-circle"></i>
+                    <h6>Status</h6>
+                    <p>Failed</p>
+                </div>
+            </div>
+
+            {% if error_log %}
+            <button class="btn btn-outline w-100" onclick="toggleErrorLog()">
+                <i class="fas fa-bug me-2"></i>View Error Details
+            </button>
+
+            <div class="error-log" id="errorLog">
+                <div class="error-header">
+                    <h5><i class="fas fa-exclamation-triangle me-2"></i>Error Log</h5>
+                    <button class="btn btn-sm" onclick="toggleErrorLog()"
+                        style="padding: 0.25rem 0.5rem; color: #ef4444;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="log-content">
+                    {{ error_log }}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="action-buttons">
+                <a href="{{ url_for('index') }}" class="btn btn-primary">
+                    <i class="fas fa-home me-2"></i>Back to Dashboard
+                </a>
+                <a href="#" class="btn btn-outline">
+                    <i class="fas fa-redo me-2"></i>Try Again
+                </a>
+            </div>
+
+            {% elif run.status == 'cancelled' %}
+            <!-- Cancelled State -->
+            <div class="status-icon warning">
+                <i class="fas fa-ban"></i>
+            </div>
+            <h2 class="status-title warning-title">Analysis Cancelled</h2>
+            <p class="status-subtitle">This BLAST run was cancelled by the user.</p>
+
+            <div class="action-buttons">
+                <a href="{{ url_for('index') }}" class="btn btn-primary">
+                    <i class="fas fa-home me-2"></i>Return Home
+                </a>
+            </div>
+
+            {% else %}
+            <!-- Processing State -->
+            <div class="status-icon processing-icon">
+                <div class="spinner"></div>
+                <div class="inner-circle">
+                    <i class="fas fa-dna"></i>
+                </div>
+            </div>
+
+            <h2 class="status-title processing-title">Processing BLAST Analysis</h2>
+            <p class="status-subtitle">Your sequence is being analyzed against our reference database.</p>
+
+            <div class="timer" id="timer">00:00</div>
+
+            <!-- Progress steps -->
+            <div class="steps-container">
+                <div class="step completed">
+                    <div class="step-icon">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <div class="step-label">Upload</div>
+                </div>
+                <div class="step active">
+                    <div class="step-icon">
+                        2
+                    </div>
+                    <div class="step-label">Alignment</div>
+                </div>
+                <div class="step">
+                    <div class="step-icon">
+                        3
+                    </div>
+                    <div class="step-label">Analysis</div>
+                </div>
+                <div class="step">
+                    <div class="step-icon">
+                        4
+                    </div>
+                    <div class="step-label">Results</div>
+                </div>
+            </div>
+
+            <!-- Real-time Terminal -->
+            <div class="terminal-container">
+                <div class="terminal-header">
+                    <span><i class="fas fa-terminal me-2"></i>Live Execution Log</span>
+                    <div class="terminal-controls">
+                        <span class="terminal-dot red"></span>
+                        <span class="terminal-dot yellow"></span>
+                        <span class="terminal-dot green"></span>
+                    </div>
+                </div>
+                <div class="terminal-window" id="terminalWindow">
+                    <pre class="terminal-content" id="logContent">Initializing connection...</pre>
+                </div>
+            </div>
+
+            <!-- Info cards -->
+            <div class="info-grid">
+                <div class="info-card">
+                    <i class="fas fa-clock"></i>
+                    <h6>Estimated Time</h6>
+                    <p>
+                        < 1 minute</p>
+                </div>
+                <div class="info-card">
+                    <i class="fas fa-envelope"></i>
+                    <h6>Notification</h6>
+                    <p>Email on completion</p>
+                </div>
+                <div class="info-card">
+                    <i class="fas fa-database"></i>
+                    <h6>Database</h6>
+                    <p>NCBI Reference</p>
+                </div>
+                <div class="info-card">
+                    <i class="fas fa-history"></i>
+                    <h6>Status</h6>
+                    <p id="currentStatus">Processing...</p>
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <small class="text-muted">
+                    <i class="fas fa-info-circle me-2"></i>
+                    You can safely close this window - we'll email you when the analysis is complete.
+                </small>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        const runId = "{{ run.run_id }}";
+
+        // Timer functionality
+        // detailed start time from server
+        const startTimeTs = {{ run.start_time.timestamp() * 1000 }};
+        const timerElement = document.getElementById('timer');
+        const logContent = document.getElementById('logContent');
+        const terminalWindow = document.getElementById('terminalWindow');
+
+        // Start real timer (based on server start time)
+        function updateTimer() {
+            const now = Date.now();
+            const elapsed = Math.floor((now - startTimeTs) / 1000);
+            if (elapsed >= 0) {
+                const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+                const seconds = (elapsed % 60).toString().padStart(2, '0');
+                timerElement.textContent = `${minutes}:${seconds}`;
+            }
+        }
+
+        setInterval(updateTimer, 1000);
+        updateTimer();
+
+        // Poll status and logs
+        function checkStatus() {
+            fetch(`/api/blast/status/${runId}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Update Log
+                    if (data.log) {
+                        const isScrolledToBottom = terminalWindow.scrollHeight - terminalWindow.scrollTop === terminalWindow.clientHeight;
+                        logContent.textContent = data.log;
+                        if (isScrolledToBottom) {
+                            terminalWindow.scrollTop = terminalWindow.scrollHeight;
+                        }
+                    }
+
+                    if (data.status === 'completed') {
+                        // Show complete state then redirect
+                        document.querySelectorAll('.step').forEach(s => s.classList.add('completed'));
+                        document.getElementById('currentStatus').textContent = "Analysis Complete!";
+
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                    } else if (data.status === 'failed' || data.status === 'cancelled') {
+                        window.location.reload();
+                    }
+                })
+                .catch(err => console.error("Polling error:", err));
+        }
+
+        // Poll every 2 seconds
+        setInterval(checkStatus, 2000);
+        checkStatus();
+
+        // Error log toggle
+        function toggleErrorLog() {
+            const errorLog = document.getElementById('errorLog');
+            if (errorLog) {
+                errorLog.classList.toggle('show');
+            }
+        }
+    </script>
+
+</body>
+
+</html>

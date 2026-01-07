@@ -153,6 +153,16 @@ def init_db():
     except Error as e:
         print(f"Migration warning (status): {e}")
 
+    # MIGRATION 3: Add run_type column
+    try:
+        cursor.execute("SELECT run_type FROM pipeline_runs LIMIT 1")
+        cursor.fetchone()
+    except Error:
+        print("Migrating: Adding 'run_type' column...")
+        cursor.execute("ALTER TABLE pipeline_runs ADD COLUMN run_type VARCHAR(50) DEFAULT 'pipeline'")
+        connection.commit()
+        print("Migration successful.")
+
     finally:
         if connection.is_connected():
             cursor.close()

@@ -829,6 +829,29 @@
                 transform: translateX(0);
             }
         }
+
+        /* Filter Controls */
+        .filter-btn {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            color: #94a3b8;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9em;
+        }
+
+        .filter-btn:hover {
+            background: rgba(148, 163, 184, 0.1);
+            color: #e2e8f0;
+        }
+
+        .filter-btn.active {
+            background: rgba(102, 252, 241, 0.15);
+            border-color: #66fcf1;
+            color: #66fcf1;
+        }
     </style>
 </head>
 
@@ -937,9 +960,16 @@
     <div class="container">
         <h1>📁 My Pipeline Runs</h1>
 
+        <!-- Filter Controls -->
+        <div class="filter-controls" style="margin-bottom: 20px; display: flex; gap: 10px;">
+            <button class="filter-btn active" onclick="filterRuns('all')" id="btn-all">All Runs</button>
+            <button class="filter-btn" onclick="filterRuns('analysis')" id="btn-analysis">🧬 Analysis</button>
+            <button class="filter-btn" onclick="filterRuns('blast')" id="btn-blast">⚡ BLAST</button>
+        </div>
+
         {% if runs %}
         {% for run in runs %}
-        <div class="run-card" id="run-{{ run['run_id'] }}">
+        <div class="run-card" id="run-{{ run['run_id'] }}" data-run-type="{{ run['run_type']|default('analysis') }}">
 
             <div class="run-header">
                 <div class="run-info">
@@ -971,21 +1001,39 @@
                     </form>
                     {% endif %}
 
+                    {% if run.get('run_type') == 'blast' or run['run_id'].startswith('blast_') %}
+                    <a href="{{ url_for('blast_status', run_id=run['run_id']) }}" class="action-btn view-btn">
+                        👁️ View
+                    </a>
+                    {% else %}
                     <a href="{{ url_for('status', run_id=run['run_id']) }}" class="action-btn view-btn">
                         👁️ View
                     </a>
+                    {% endif %}
 
+                    <!-- Common Actions: Files Button -->
                     <button class="action-btn toggle-files-btn" onclick="toggleFiles(event, '{{ run['run_id'] }}')">
                         📂 Files
                     </button>
 
-                    <!-- Hide Zip Download if Running -->
+                    <!-- BLAST Specific: CSV -->
+                    {% if (run.get('run_type') == 'blast' or run['run_id'].startswith('blast_')) and run['status'] ==
+                    'completed' %}
+                    <a class="action-btn download-all-btn"
+                        href="{{ url_for('download_blast_csv', run_id=run['run_id']) }}"
+                        style="background: rgba(16, 185, 129, 0.2); color: #10b981;">
+                        ⬇️ CSV
+                    </a>
+                    {% endif %}
+
+                    <!-- Common Actions: Zip Download -->
+                    <!-- Common Actions: Zip Download -->
                     {% if run['has_files'] and run['status'] != 'running' %}
                     <a class="action-btn download-all-btn" href="#"
                         data-prepare-url="{{ url_for('prepare_download', run_id=run['run_id']) }}"
-                        data-download-url="{{ url_for('download_all', username=safe_username(session['user']), run_id=run['run_id']) }}"
+                        data-download-url="{{ url_for('download_all', username=safe_username(current_user), run_id=run['run_id']) }}"
                         onclick="handleGlobalDownload(event, this)">
-                        ⬇️ Zip
+                        📦 Zip
                     </a>
                     {% endif %}
 
@@ -1044,7 +1092,27 @@
         {% endif %}
     </div>
     <script>
-        // Update Elapsed Time for Running Instances
+        // Filter functionality
+        function filterRuns(type) {
+            // Update buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${type}`).classList.add('active');
+
+            // Filter items
+            const cards = document.querySelectorAll('.run-card');
+            cards.forEach(card => {
+                const runType = (card.dataset.runType || '').toLowerCase();
+                const filterType = type.toLowerCase();
+
+                if (filterType === 'all' || runType === filterType) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        // Update Running Timers
         function updateRunningTimers() {
             const timers = document.querySelectorAll('.running-timer');
             const now = Date.now();

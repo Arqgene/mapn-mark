@@ -76,7 +76,7 @@ def log_run_start(run_id, user_email):
         try:
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO pipeline_runs (run_id, user_email, status, start_time) VALUES (%s, %s, %s, %s)",
+                "INSERT INTO pipeline_runs (run_id, user_email, status, start_time, run_type) VALUES (%s, %s, %s, %s, 'analysis')",
                 (run_id, user_email, 'running', datetime.now())
             )
             conn.commit()
@@ -101,8 +101,19 @@ def log_run_end(run_id, status):
         except Exception as e:
              print(f"Failed to log run end: {e}")
 
+from utils.mailer import send_run_completion_email, send_run_start_email
+
+# ... existing code ...
+
 def run_pipeline_wrapper(run_id, user_email, mode, *args):
     """Wraps the pipeline execution to handle DB logging."""
+    final_status = 'failed' # Default
+    
+    # Send Start Email
+    host_url = os.environ.get("APP_URL", "http://localhost:5000")
+    run_url = f"{host_url}/status/{run_id}"
+    send_run_start_email(user_email, run_id, tool_name="Pipeline", run_url=run_url)
+
     try:
         if mode == "single":
              # args format for single: input_fastq_path, output_dir, genome_size, threads, log_file, min_length, keep_percent, selected_tools
@@ -116,22 +127,37 @@ def run_pipeline_wrapper(run_id, user_email, mode, *args):
         output_dir = args[1]
         
         if os.path.exists(os.path.join(output_dir, "CANCEL")) or os.path.exists(os.path.join(output_dir, "PIPELINE_ABORTED")):
-            log_run_end(run_id, 'cancelled')
+            final_status = 'cancelled'
         elif os.path.exists(os.path.join(output_dir, "PIPELINE_DONE")):
-            log_run_end(run_id, 'completed')
+            final_status = 'completed'
         else:
-             # Fallback if no specific flag found but process finished (likely error or empty run)
-             # Check for error in log?
-             log_run_end(run_id, 'completed') # Assume completed if no error flag, or maybe 'failed'? 
-             # Let's stick to 'completed' if it finished without abort, or maybe check for PIEPLINE_DONE explicitly.
-             # If PIEPLINE_DONE is missing, it might have crashed.
-             if not os.path.exists(os.path.join(output_dir, "PIPELINE_DONE")):
-                 log_run_end(run_id, 'failed')
+             # Fallback
+             log_path = os.path.join(output_dir, "pipeline_output.log")
+             if os.path.exists(log_path):
+                 with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+                     content = f.read()
+                     if "PIPELINE FINISHED" in content:
+                         final_status = 'completed'
+             
+             if not os.path.exists(os.path.join(output_dir, "PIPELINE_DONE")) and final_status != 'completed':
+                  final_status = 'failed'
 
     except Exception as e:
         print(f"Pipeline wrapper error: {e}")
         traceback.print_exc()
-        log_run_end(run_id, 'failed')
+        final_status = 'failed'
+    
+    finally:
+        # 1. Log to DB
+        log_run_end(run_id, final_status)
+        
+        # 2. Send Email Notification
+        # Construct URL (Assuming standard port 5000 if not set in env)
+        host_url = os.environ.get("APP_URL", "http://localhost:5000")
+        run_url = f"{host_url}/status/{run_id}"
+        
+        print(f"Sending completion email for run {run_id} ({final_status})")
+        send_run_completion_email(user_email, run_id, final_status, run_url=run_url)
 
 # -----------------------------
 # INDEX / SUBMIT PIPELINE

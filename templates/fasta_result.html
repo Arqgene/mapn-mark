@@ -4,230 +4,475 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gene Comparison Results | MapNMark</title>
+    <title>BLAST Results | MapNMark</title>
+    <!-- Re-using existing styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='index_styles.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='fasta_cmp.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Basic styling to make it functional */
-        .seq-action {
-            cursor: pointer;
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --dark-bg: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.85);
+            --border-color: rgba(102, 252, 241, 0.15);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent-color: #66fcf1;
+            --accent-hover: #45a29e;
         }
 
-        .sequence-preview {
-            max-height: 200px;
-            overflow-y: auto;
+        body {
+            background-color: var(--dark-bg);
+            color: var(--text-primary);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(76, 29, 149, 0.1) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(56, 189, 248, 0.05) 0%, transparent 20%);
         }
 
-        .sequence-preview.expanded {
-            max-height: 500px;
+        .result-container {
+            padding-top: 120px;
+            padding-bottom: 50px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .card-header {
+            background: rgba(30, 41, 59, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1.5rem 2rem;
+        }
+
+        .card-body {
+            padding: 2rem;
+        }
+
+        h2 {
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-weight: 700;
+            font-size: 2.25rem;
+        }
+
+        .result-header {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            margin-bottom: 2rem;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            background: rgba(15, 23, 42, 0.7);
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .table-container {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .table {
+            color: var(--text-primary);
+            margin-bottom: 0;
+        }
+
+        .table thead th {
+            background: linear-gradient(135deg, rgba(102, 252, 241, 0.1) 0%, rgba(102, 252, 241, 0.05) 100%);
+            border-bottom: 2px solid var(--border-color);
+            color: var(--accent-color);
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 1rem 1.5rem;
+        }
+
+        .table tbody td {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid rgba(102, 252, 241, 0.1);
+            vertical-align: middle;
+        }
+
+        .table tbody tr {
+            transition: all 0.2s ease;
+        }
+
+        .table tbody tr:hover {
+            background: rgba(102, 252, 241, 0.08);
+            transform: translateY(-1px);
+        }
+
+        .badge {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            letter-spacing: 0.02em;
+        }
+
+        .identity-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            letter-spacing: 0.02em;
+            min-width: 80px;
+            justify-content: center;
+        }
+
+        .badge-high {
+            background: var(--success-gradient);
+            color: white;
+        }
+
+        .badge-medium {
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            color: #0f172a;
+        }
+
+        .badge-low {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-gradient:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+            color: white;
+        }
+
+        .btn-outline-accent {
+            border: 2px solid var(--accent-color);
+            color: var(--accent-color);
+            background: transparent;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-outline-accent:hover {
+            background: var(--accent-color);
+            color: var(--dark-bg);
+            border-color: var(--accent-color);
+        }
+
+        .stat-card {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent-color);
+            box-shadow: 0 10px 25px rgba(102, 252, 241, 0.1);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .empty-state {
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 1.5rem;
+            opacity: 0.7;
+        }
+
+        .section-title {
+            color: var(--accent-color);
+            font-weight: 600;
+            font-size: 1.25rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .section-title i {
+            font-size: 1.5rem;
+        }
+
+        .pagination-container {
+            display: flex;
+            justify-content: center;
+            padding: 2rem 0 1rem;
+        }
+
+        .page-link {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid var(--border-color);
+            color: var(--accent-color);
+            margin: 0 0.25rem;
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .page-link:hover {
+            background: var(--accent-color);
+            color: var(--dark-bg);
+        }
+
+        .page-item.active .page-link {
+            background: var(--accent-color);
+            color: var(--dark-bg);
+            border-color: var(--accent-color);
+        }
+
+        @media (max-width: 768px) {
+            .result-container {
+                padding-top: 100px;
+            }
+
+            .card-body {
+                padding: 1rem;
+            }
+
+            .table-responsive {
+                border-radius: 8px;
+            }
+
+            .table thead th,
+            .table tbody td {
+                padding: 0.75rem;
+            }
         }
     </style>
 </head>
 
 <body>
+
     {% include 'components/navbar.html' %}
-    <div class="main-container">
-        <!-- Header -->
-        <header class="header">
-            <div class="header-content">
-                <div class="title-section">
-                    <h1 class="main-title">🧬 Gene Comparison Analysis</h1>
-                    <div class="file-info">
-                        <span class="file-badge">{{ filename1 }}</span>
-                        <span>vs</span>
-                        <span class="file-badge">{{ filename2 }}</span>
+
+    <div class="container result-container">
+        <!-- Header Section -->
+        <div
+            class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
+            <div class="mb-4 mb-md-0">
+                <h2>BLAST Analysis Results</h2>
+                <div class="file-info mt-3">
+                    <i class="fas fa-file-alt text-accent"></i>
+                    <div>
+                        <p class="mb-0" style="color: var(--text-secondary); font-size: 0.875rem;">Query File</p>
+                        <p class="mb-0 fw-semibold">{{ filename }}</p>
+                    </div>
+                </div>
+            </div>
+            <a href="{{ url_for('index') }}" class="btn btn-gradient">
+                <i class="fas fa-arrow-left me-2"></i> Back to Dashboard
+            </a>
+        </div>
+
+        <!-- Statistics Overview -->
+        {% if results %}
+        <div class="row mb-4">
+            <div class="col-md-3 col-6 mb-3">
+                <div class="stat-card">
+                    <div class="stat-value">{{ results|length }}</div>
+                    <div class="stat-label">Total Matches</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6 mb-3">
+                <div class="stat-card">
+                    <div class="stat-value">
+                        {% set avg_identity = results|map(attribute='identity')|sum / results|length if results else 0
+                        %}
+                        {{ "%.1f"|format(avg_identity) }}%
+                    </div>
+                    <div class="stat-label">Avg. Identity</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6 mb-3">
+                <div class="stat-card">
+                    <div class="stat-value">
+                        {{ results|selectattr('evalue', 'lt', 0.001)|list|length }}
+                    </div>
+                    <div class="stat-label">High Confidence</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6 mb-3">
+                <div class="stat-card">
+                    <div class="stat-value">
+                        {% set unique_subjects = results|map(attribute='subject_id')|unique|list|length %}
+                        {{ unique_subjects }}
+                    </div>
+                    <div class="stat-label">Unique Subjects</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Results Table -->
+        <div class="card shadow-lg">
+            <div class="card-header">
+                <div class="section-title">
+                    <i class="fas fa-table"></i>
+                    <span>Sequence Alignment Results</span>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% if results %}
+                <div class="table-container">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Query ID</th>
+                                    <th>Subject ID</th>
+                                    <th class="text-center">Identity</th>
+                                    <th class="text-center">Alignment Length</th>
+                                    <th class="text-center">Mismatches</th>
+                                    <th class="text-center">Gaps</th>
+                                    <th class="text-center">E-value</th>
+                                    <th class="text-center">Bit Score</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for r in results %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class="fas fa-dna text-accent" style="font-size: 0.875rem;"></i>
+                                            <span class="font-monospace" style="font-size: 0.875rem;">{{ r.query_id[:20]
+                                                }}{% if r.query_id|length > 20 %}...{% endif %}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class="fas fa-database text-accent" style="font-size: 0.875rem;"></i>
+                                            <span class="font-monospace" style="font-size: 0.875rem;">{{
+                                                r.subject_id[:20] }}{% if r.subject_id|length > 20 %}...{% endif
+                                                %}</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span
+                                            class="identity-badge {% if r.identity >= 95 %}badge-high{% elif r.identity >= 80 %}badge-medium{% else %}badge-low{% endif %}">
+                                            <i class="fas fa-chart-line"></i>
+                                            {{ r.identity }}%
+                                        </span>
+                                    </td>
+                                    <td class="text-center font-monospace">{{ r.align_len }}</td>
+                                    <td class="text-center font-monospace">{{ r.mismatch }}</td>
+                                    <td class="text-center font-monospace">{{ r.gaps }}</td>
+                                    <td class="text-center">
+                                        <span
+                                            class="font-monospace {% if r.evalue < 0.001 %}text-success{% elif r.evalue < 0.01 %}text-warning{% else %}text-secondary{% endif %}">
+                                            {{ r.evalue }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <strong class="font-monospace" style="color: var(--accent-color);">{{ r.bitscore
+                                            }}</strong>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
-                <div class="header-actions">
-                    <a href="{{ url_for('index') }}" class="action-btn back-btn">
-                        Back to Dashboard
+                {% else %}
+                <!-- Empty State -->
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <h4 class="mb-3">No Significant Matches Found</h4>
+                    <p class="text-muted mb-4">The BLAST search did not return any significant matches for your query.
+                    </p>
+                    <div class="d-flex gap-3 justify-content-center">
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-accent">
+                            <i class="fas fa-redo me-2"></i>Try New Search
+                        </a>
+                        <a href="#" class="btn btn-gradient">
+                            <i class="fas fa-cog me-2"></i>Adjust Parameters
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        {% if results %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="d-flex flex-wrap gap-3 justify-content-end">
+                    <a href="{{ url_for('download_blast_csv', run_id=run_id) }}" class="btn btn-outline-accent">
+                        <i class="fas fa-download me-2"></i> Export CSV
                     </a>
 
                 </div>
             </div>
-        </header>
-
-        <!-- Summary Statistics -->
-        <div class="summary-stats">
-            <div class="stat-card">
-                <div class="stat-content">
-                    <div class="stat-text">
-                        <div class="stat-value">{{ results|length }}</div>
-                        <div class="stat-label">Total Genes Compared</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-content">
-                    <div class="stat-text">
-                        <div class="stat-value">{{ results|selectattr('status', 'equalto', 'Common')|list|length }}
-                        </div>
-                        <div class="stat-label">Common Genes</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-content">
-                    <div class="stat-text">
-                        <div class="stat-value">{{ results|selectattr('status', 'equalto', 'Unique to File
-                            1')|list|length }}</div>
-                        <div class="stat-label">Unique to File 1</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-content">
-                    <div class="stat-text">
-                        <div class="stat-value">{{ results|selectattr('status', 'equalto', 'Unique to File
-                            2')|list|length }}</div>
-                        <div class="stat-label">Unique to File 2</div>
-                    </div>
-                </div>
-            </div>
         </div>
-
-        <!-- Results Table -->
-        <div class="results-container">
-            <div class="results-header">
-                <h2 class="results-title">
-                    Detailed Comparison Results
-                </h2>
-                <div class="results-count">
-                    {{ results|length }} Records
-                </div>
-            </div>
-
-            {% if results %}
-            <div class="scroll-container">
-                <table class="results-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 15%;">Gene ID</th>
-                            <th style="width: 15%;">Status</th>
-                            <th style="width: 15%;">Sequence Lengths</th>
-                            <th style="width: 55%;">Sequence Preview</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in results %}
-                        <tr>
-                            <td>
-                                <div class="gene-id-container">
-                                    <span class="gene-id">{{ row.id }}</span>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="status-container">
-                                    <span class="status-badge 
-                                        {% if 'Common' in row.status %}status-common{% endif %}
-                                        {% if 'Unique to File 1' in row.status %}status-unique1{% endif %}
-                                        {% if 'Unique to File 2' in row.status %}status-unique2{% endif %}">
-                                        {{ row.status }}
-                                    </span>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="lengths-display">
-                                    <div class="length-item">
-                                        <div class="length-label">File 1:</div>
-                                        <div class="length-value">{{ row.len1 }} bp</div>
-                                    </div>
-                                    <div class="length-item">
-                                        <div class="length-label">File 2:</div>
-                                        <div class="length-value">{{ row.len2 }} bp</div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="sequence-container">
-                                    <div class="sequence-header">
-                                        <div class="sequence-title">
-                                            Sequence Comparison
-                                        </div>
-
-                                    </div>
-                                    <div class="sequence-preview" id="sequence-preview-{{ loop.index0 }}">
-                                        {{ row.diff | safe }}
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="empty-state">
-                <h3>No Comparison Results Found</h3>
-                <p>The gene comparison analysis did not yield any results. Please check your input files and try again.
-                </p>
-                <a href="{{ url_for('index') }}" class="action-btn back-btn">
-                    Try Another Comparison
-                </a>
-            </div>
-            {% endif %}
-        </div>
-
-        <!-- Summary Footer -->
-        <div class="summary-footer">
-            <p class="summary-text">
-                🧬 <strong>Analysis Summary:</strong> Successfully compared
-                <span class="summary-highlight">{{ results|length }}</span> genes between
-                <span class="summary-highlight">{{ filename1 }}</span> and
-                <span class="summary-highlight">{{ filename2 }}</span>.
-                Found
-                <span class="summary-highlight">{{ results|selectattr('status', 'equalto', 'Common')|list|length
-                    }}</span> common genes,
-                <span class="summary-highlight">{{ results|selectattr('status', 'equalto', 'Unique to File
-                    1')|list|length }}</span> unique to File 1, and
-                <span class="summary-highlight">{{ results|selectattr('status', 'equalto', 'Unique to File
-                    2')|list|length }}</span> unique to File 2.
-            </p>
-        </div>
+        {% endif %}
     </div>
 
-    <script>
-        console.log('Gene Comparison Results script loaded');
-        // Store sequences data
-        const sequencesData = [
-            {% for row in results %}
-        {
-            id: "{{ row.id }}",
-                sequence: `{{ row.diff | safe }}`,
-                    status: "{{ row.status }}",
-                        len1: { { row.len1 } },
-            len2: { { row.len2 } }
-        } {% if not loop.last %}, {% endif %}
-        {% endfor %}
-        ];
-
-
-
-
-
-        // Export results
-
-
-        // Initialize event listeners
-        document.addEventListener('DOMContentLoaded', function () {
-            // Export button
-            const exportBtn = document.getElementById('exportBtn');
-            if (exportBtn) {
-                exportBtn.addEventListener('click', exportResults);
-            }
-
-            // Clean up any remaining special symbols from sequences
-            document.querySelectorAll('.sequence-preview').forEach(preview => {
-                preview.innerHTML = preview.innerHTML.replace(/class="match"/g, 'class="match"');
-                preview.innerHTML = preview.innerHTML.replace(/class="mismatch"/g, 'class="mismatch"');
-                preview.innerHTML = preview.innerHTML.replace(/class="unique"/g, 'class="unique"');
-            });
-        });
-    </script>
 </body>
 
 </html>

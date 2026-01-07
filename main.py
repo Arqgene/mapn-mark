@@ -42,7 +42,18 @@ def safe_username(email: str) -> str:
 
 
 def get_run_dir(email: str, run_id: str) -> Path:
-    return Path(PIPELINE_RUNS_DIR) / safe_username(email) / run_id
+    # 1. Canonical User Path (New standard)
+    user_path = Path(PIPELINE_RUNS_DIR) / safe_username(email) / run_id
+    if user_path.exists():
+        return user_path
+
+    # 2. Legacy Flat Path (Old BLAST runs)
+    flat_path = Path(PIPELINE_RUNS_DIR) / run_id
+    if flat_path.exists():
+        return flat_path
+
+    # Default to user path for new creation
+    return user_path
 
 
 # =============================
@@ -472,7 +483,7 @@ def my_runs():
     
     # 1. Runs in DB
     for run_id, db_data in db_runs_map.items():
-         run_path = user_root / run_id
+         run_path = get_run_dir(session["user"], run_id)
          
          # Check files
          file_tree = {}
@@ -531,6 +542,7 @@ def my_runs():
 
          runs_data.append({
              "run_id": run_id,
+             "run_type": db_data.get("run_type") or "analysis", # Handle None or missing
              "status": current_status,
              "start_time": db_data["start_time"],
              "end_time": db_data["end_time"],
@@ -545,6 +557,7 @@ def my_runs():
                 files = [str(p.relative_to(run_dir)) for p in run_dir.rglob("*") if p.is_file()]
                 runs_data.append({
                     "run_id": run_dir.name,
+                    "run_type": "analysis", # Standard pipeline runs (legacy)
                     "status": "legacy",
                     "start_time": datetime.fromtimestamp(run_dir.stat().st_ctime),
                     "end_time": None,
@@ -595,7 +608,25 @@ def fasta_compare_index():
 def fasta_compare_run():
     return fasta_controller.compare()
 
+@app.route("/blast/status/<run_id>")
+@login_required
+def blast_status(run_id):
+    return fasta_controller.blast_status(run_id)
 
+@app.route("/blast/result/<run_id>")
+@login_required
+def blast_result(run_id):
+    return fasta_controller.blast_result(run_id)
+
+@app.route("/api/blast/status/<run_id>")
+@login_required
+def blast_status_api(run_id):
+    return fasta_controller.blast_status_api(run_id)
+
+@app.route("/blast/download_csv/<run_id>")
+@login_required
+def download_blast_csv(run_id):
+    return fasta_controller.download_blast_csv(run_id)
 @app.route("/delete_run/<username>/<run_id>", methods=["POST"])
 @login_required
 def delete_run(username, run_id):

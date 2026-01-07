@@ -1,0 +1,52 @@
+{% extends "index.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">BLAST Sequence Comparison</h4>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show"
+                        role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                    {% endwith %}
+
+                    <p class="text-muted">Upload a FASTA file to query against the reference database using BLASTN.</p>
+
+                    <form action="{{ url_for('fasta_compare_run') }}" method="POST" enctype="multipart/form-data">
+                        <div class="mb-4">
+                            <label for="file1" class="form-label">Query FASTA File</label>
+                            <input class="form-control" type="file" id="file1" name="file1" accept=".fasta,.fa,.fna"
+                                required>
+                            <div class="form-text">Supported formats: .fasta, .fa, .fna</div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search me-2"></i> Run BLAST
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="mt-4 text-center">
+                <small class="text-muted">
+                    <i class="fas fa-info-circle"></i> Requires NCBI BLAST+ installed on the server.<br>
+                    Query will be run against pre-configured local database.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

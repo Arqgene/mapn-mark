@@ -872,40 +872,39 @@
         <!-- Unique Gene Identifier Tab Content -->
         <div id="gene-tab" class="tab-content">
             <div class="form-container">
-                <h2 class="section-title">🧬 Gene Comparison Tool</h2>
-                <p style="color: #cbd5e1; margin-bottom: 20px;">Upload two FASTA files to identify unique genes and
-                    compare sequences.</p>
+                <h2 class="section-title">🧬 BLAST Sequence Comparison</h2>
+                <p class="text-muted" style="margin-bottom: 20px;">Upload a FASTA file to query against the local
+                    reference database using BLAST+.</p>
 
                 <form action="{{ url_for('fasta_compare_run') }}" method="POST" enctype="multipart/form-data"
                     id="geneCompareForm">
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="file1">
-                                📄 First FASTA File
+                                📄 Query FASTA File
                             </label>
                             <div class="input-wrapper">
                                 <span class="input-icon biotech-icons">🧬</span>
-                                <input type="file" id="file1" name="file1" accept=".fasta,.fa,.txt" required>
+                                <input type="file" id="file1" name="file1" accept=".fasta,.fa,.fna" required>
                             </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="file2">
-                                📄 Second FASTA File
-                            </label>
-                            <div class="input-wrapper">
-                                <span class="input-icon biotech-icons">🧬</span>
-                                <input type="file" id="file2" name="file2" accept=".fasta,.fa,.txt" required>
+                            <div class="form-text mt-2" style="color: #94a3b8;">Supported formats: .fasta, .fa, .fna
                             </div>
                         </div>
                     </div>
 
                     <div class="submit-container">
-                        <button type="submit" class="submit-btn" id="geneSubmitBtn">
-                            🔍 COMPARE FILES
+                        <button type="submit" class="submit-btn">
+                            🚀 RUN BLAST QUERY
                         </button>
                     </div>
                 </form>
+
+                <div class="mt-4 text-center">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle"></i> Requires NCBI BLAST+ installed on the server.<br>
+                        Query will be run against pre-configured local database.
+                    </small>
+                </div>
             </div>
         </div>
     </div>
@@ -973,28 +972,6 @@
                     <em>Unlocking the secrets of your microbiome data...</em>
                 </p>
                 <div class="status-badge">✨ BUILDING IN PROGRESS</div>
-
-                <!-- Progress Bar -->
-                <div class="progress-bar">
-                    <div class="progress-fill"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Gene Identifier Coming Soon Overlay -->
-    <div id="geneOverlay" class="coming-soon-overlay">
-        <div class="coming-soon-container">
-            <button class="close-overlay" onclick="closeOverlay('geneOverlay')">✕</button>
-            <div class="coming-soon-header">
-                <div class="coming-soon-icon">🧬</div>
-                <h1 class="coming-soon-title">Gene Explorer Pro</h1>
-                <p class="coming-soon-subtitle">
-                    Uncover unique genetic signatures with our advanced gene identification system.
-                    <br>
-                    <em>Mapping the blueprint of life, one gene at a time...</em>
-                </p>
-                <div class="status-badge">⚡ CRAFTING EXCELLENCE</div>
 
                 <!-- Progress Bar -->
                 <div class="progress-bar">
@@ -1316,7 +1293,8 @@
                     button.classList.add('active');
 
                     // Special handling for coming soon tabs
-                    if (button.classList.contains('coming-soon')) {
+                    // UPDATED: gene tab is now active, so removed from overlay logic
+                    if (button.classList.contains('coming-soon') && !tabId.includes('gene')) {
                         const overlayId = tabId.includes('qiime') ? 'qiimeOverlay' : 'geneOverlay';
                         showOverlay(overlayId);
                     } else {
