@@ -135,6 +135,7 @@
     </a>
 
     <div class="nav-links">
+        {% if session.get('role') != 'admin' %}
         <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint == 'index' %}active{% endif %}">
             <span>🏠</span>
             <span class="nav-text">Home</span>
@@ -150,8 +151,17 @@
             <span>🔧</span>
             <span class="nav-text">Diagnostics</span>
         </a>
+        {% endif %}
 
-        {% if session.get('role') in ['admin', 'super_admin'] %}
+        {% if session.get('role') == 'super_admin' %}
+        <a href="{{ url_for('super_admin_dashboard') }}"
+            class="nav-item {% if request.endpoint == 'super_admin_dashboard' %}active{% endif %}">
+            <span>🔐</span>
+            <span class="nav-text">Super Admin</span>
+        </a>
+        {% endif %}
+
+        {% if session.get('role') in ['admin'] %}
         <a href="{{ url_for('create_user') }}"
             class="nav-item {% if request.endpoint == 'create_user' %}active{% endif %}">
             <span>➕</span>

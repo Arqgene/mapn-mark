@@ -163,7 +163,14 @@ def login():
                                       send_email_async("License Expiry Warning", user['email'], body)
 
                 flash("Login successful.", "success")
-                return redirect(url_for("index"))
+                
+                # Redirect based on role
+                if user['role'] == 'admin':
+                    # Institution admins go directly to user management
+                    return redirect(url_for("create_user"))
+                else:
+                    # Regular users and super admins go to index
+                    return redirect(url_for("index"))
 
             flash("Invalid credentials.", "error")
 
@@ -175,6 +182,14 @@ def logout():
     session.clear()
     flash("Logged out successfully.", "success")
     return redirect(url_for("login"))
+
+
+@app.route("/super-admin-dashboard")
+@login_required
+def super_admin_dashboard():
+    if session.get("role") != "super_admin":
+        abort(403)
+    return render_template("super_admin_dashboard.html")
 
 
 @app.route("/create-user")
@@ -597,23 +612,32 @@ def build_file_tree(paths):
 @app.route("/", methods=["GET", "POST"])
 @login_required
 def index():
+    # Redirect admins to user management page
+    if session.get("role") == "admin":
+        return redirect(url_for("create_user"))
     return main_controller.index()
 
 
 @app.route("/status/<run_id>")
 @login_required
 def status(run_id):
+    if session.get("role") == "admin":
+        return redirect(url_for("create_user"))
     return main_controller.status(run_id)
 
 
 @app.route("/get_log/<run_id>")
 @login_required
 def get_log(run_id):
+    if session.get("role") == "admin":
+        return redirect(url_for("create_user"))
     return main_controller.get_log(run_id)
 
 @app.route("/diagnostics")
 @login_required
 def diagnostics():
+    if session.get("role") == "admin":
+        return redirect(url_for("create_user"))
     return diagnostics_controller.index()
 
 @app.route("/api/diagnostics/run")
@@ -763,6 +787,8 @@ def download_file(username, run_id):
 @app.route("/my-runs")
 @login_required
 def my_runs():
+    if session.get("role") == "admin":
+        return redirect(url_for("create_user"))
     username = safe_username(session["user"])
     user_root = Path(PIPELINE_RUNS_DIR) / username
     

@@ -502,7 +502,7 @@
                     <form id="createUserForm" class="form-grid">
                         <!-- Super Admin: Select Institution -->
                         <div class="full-width" id="instSelectGroup" style="display:none;">
-                            <label>Institution</label>
+                            <label>Institution <span style="color: #f56565;">(Required for User/Admin)</span></label>
                             <div class="input-wrapper">
                                 <i class="fas fa-building input-icon"></i>
                                 <select id="targetInstitution">
@@ -552,7 +552,7 @@
                             </div>
                         </div>
 
-                        <div class="full-width">
+                        <div class="full-width" style="text-align: center;">
                             <button type="submit" class="submit-btn">
                                 <i class="fas fa-plus-circle"></i> Create User
                             </button>
@@ -627,7 +627,7 @@
                                 <input type="date" id="newLicenseExpiry" placeholder="YYYY-MM-DD">
                             </div>
                         </div>
-                        <div class="full-width">
+                        <div class="full-width" style="text-align: center;">
                             <button type="submit" class="submit-btn">
                                 <i class="fas fa-plus-circle"></i> Create Institution
                             </button>
@@ -680,11 +680,33 @@
                 document.getElementById('seatUsageSection').style.display = 'grid';
             }
 
+            // Add event listener for role change
+            document.getElementById('role').addEventListener('change', handleRoleChange);
+
             document.getElementById('createUserForm').addEventListener('submit', handleCreateUser);
             document.getElementById('createInstForm').addEventListener('submit', handleCreateInst);
 
             fetchUsers();
         });
+
+        function handleRoleChange(e) {
+            const selectedRole = e.target.value;
+            const instSelectGroup = document.getElementById('instSelectGroup');
+            const instSelect = document.getElementById('targetInstitution');
+
+            if (selectedRole === 'super_admin') {
+                // Hide institution field for super admin
+                instSelectGroup.style.display = 'none';
+                instSelect.removeAttribute('required');
+                instSelect.value = ''; // Clear selection
+            } else {
+                // Show and require institution field for user and admin
+                if (currentUserRole === 'super_admin') {
+                    instSelectGroup.style.display = 'block';
+                    instSelect.setAttribute('required', 'required');
+                }
+            }
+        }
 
         function switchTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -834,17 +856,29 @@
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
 
+            const selectedRole = document.getElementById('role').value;
             const payload = {
                 name: document.getElementById('name').value,
                 username: document.getElementById('username').value,
                 email: document.getElementById('email').value,
                 password: document.getElementById('password').value,
-                role: document.getElementById('role').value
+                role: selectedRole
             };
 
+            // Only add institution_id if NOT creating a super admin
             if (currentUserRole === 'super_admin') {
-                const instId = document.getElementById('targetInstitution').value;
-                if (instId) payload.institution_id = instId;
+                if (selectedRole !== 'super_admin') {
+                    // For user and admin roles, institution is required
+                    const instId = document.getElementById('targetInstitution').value;
+                    if (!instId) {
+                        showMessage('Please select an institution for this user', 'flash-error');
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+                        return;
+                    }
+                    payload.institution_id = instId;
+                }
+                // If selectedRole is 'super_admin', don't add institution_id
             }
 
             try {
