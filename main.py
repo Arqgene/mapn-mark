@@ -95,26 +95,73 @@ def login():
         return redirect(url_for("index"))
 
     if request.method == "POST":
-        email = request.form.get("email")
+        email_or_username = request.form.get("email") # Reusing 'email' field for both
         password = request.form.get("password")
 
-        if not email or not password:
-             flash("Please provide both email and password.", "error")
+        if not email_or_username or not password:
+             flash("Please provide email/username and password.", "error")
         else:
-            user = get_user_by_email(email)
-            
+            # Try to fetch by email first, then username
+            user = get_user_by_email(email_or_username)
+            if not user:
+                 # Helper to find by username? Or just use raw SQL here for speed/simplicity
+                 conn = get_db_connection()
+                 if conn:
+                     cursor = conn.cursor(dictionary=True)
+                     cursor.execute("SELECT * FROM users WHERE username = %s", (email_or_username,))
+                     user = cursor.fetchone()
+                     cursor.close()
+                     conn.close()
+
             # Note: For production, use password hashing (e.g., bcrypt)!
             if user and user["password"] == password:
                 # Generate new session token
                 new_token = uuid.uuid4().hex
-                update_user_session_token(email, new_token)
+                update_user_session_token(user["email"], new_token)
                 
                 session["user"] = user["email"]
                 session["name"] = user["name"]
                 session["role"] = user["role"]
+                session["institution_id"] = user.get("institution_id") 
                 session["token"] = new_token
                 session["last_active"] = datetime.now().timestamp()
                 
+                # License Check Logic
+                if user.get("institution_id"):
+                     conn = get_db_connection()
+                     if conn:
+                         cursor = conn.cursor(dictionary=True)
+                         cursor.execute("SELECT * FROM institutions WHERE id = %s", (user["institution_id"],))
+                         inst = cursor.fetchone()
+                         cursor.close()
+                         conn.close()
+                         
+                         if inst and inst.get('license_expiry'):
+                             expiry = inst['license_expiry'] # Date object
+                             if isinstance(expiry, str):
+                                 try:
+                                     expiry = datetime.strptime(expiry, '%Y-%m-%d').date()
+                                 except:
+                                     pass
+                             
+                             today = datetime.now().date()
+                             
+                             if expiry < today:
+                                 session.clear()
+                                 flash("Your institution's license has expired. Please contact support.", "error")
+                                 return redirect(url_for("login"))
+                             
+                             days_left = (expiry - today).days
+                             if days_left <= 7:
+                                 flash(f"Warning: License expires in {days_left} days. Please renew.", "warning")
+                                 # Trigger Email Background (Simplified: Fire and forget via imported function if possible, or just log for now)
+                                 # In a real app, rely on a cron job. Here, we can try to send ONE email per admin/day via checking a flag, but for now just flashing.
+                                 if user['role'] == 'admin':
+                                      # Import here to avoid circulars if any
+                                      from utils.mailer import send_email_async
+                                      body = f"<h2>Urgent: License Expiry</h2><p>Your license for {inst['name']} expires on {expiry}.</p><p>Please contact the Super Admin to renew.</p>"
+                                      send_email_async("License Expiry Warning", user['email'], body)
+
                 flash("Login successful.", "success")
                 return redirect(url_for("index"))
 
@@ -133,46 +180,344 @@ def logout():
 @app.route("/create-user")
 @login_required
 def create_user():
-    if session.get("role") != "admin":
+    if session.get("role") not in ["admin", "super_admin"]: # "admin" here means Inst Admin or Super Admin
         abort(403)
     return render_template("create_user.html")
 
-
-@app.route("/api/create-user", methods=["POST"])
+@app.route("/api/institutions", methods=["GET"])
 @login_required
-def api_create_user():
-    if session.get("role") != "admin":
+def api_get_institutions():
+    if session.get("role") != "super_admin": # Only Super Admin can list all institutions
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    conn = get_db_connection()
+    if conn:
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM institutions")
+            insts = cursor.fetchall()
+            return jsonify(insts)
+        finally:
+            conn.close()
+    return jsonify({"error": "DB Error"}), 500
+
+@app.route("/api/create-institution", methods=["POST"])
+@login_required
+def api_create_institution():
+    if session.get("role") != "super_admin":
         return jsonify({"error": "Unauthorized"}), 403
 
     data = request.json
-    email = data.get("email")
-    password = data.get("password")
     name = data.get("name")
-    role = data.get("role", "user")
+    user_limit = int(data.get("user_limit", 10))
+    admin_limit = int(data.get("admin_limit", 1))
+    license_expiry = data.get("license_expiry") # Optional date string YYYY-MM-DD
 
-    if not all([email, password, name]):
-        return jsonify({"error": "Missing required fields"}), 400
+    if not name:
+        return jsonify({"error": "Institution name is required"}), 400
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM institutions WHERE name = %s", (name,))
+        if cursor.fetchone():
+            return jsonify({"error": "Institution already exists"}), 409
+
+        cursor.execute(
+            "INSERT INTO institutions (name, user_limit, admin_limit, license_expiry) VALUES (%s, %s, %s, %s)",
+            (name, user_limit, admin_limit, license_expiry)
+        )
+        conn.commit()
+        return jsonify({"message": "Institution created successfully"}), 201
+
+    except Exception as e:
+        print(f"Error creating institution: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route("/api/renew-license", methods=["POST"])
+@login_required
+def api_renew_license():
+    if session.get("role") != "super_admin":
+        return jsonify({"error": "Unauthorized"}), 403
+
+    data = request.json
+    inst_id = data.get("institution_id")
+    new_expiry = data.get("new_expiry") # YYYY-MM-DD
+
+    if not inst_id or not new_expiry:
+        return jsonify({"error": "Institution ID and New Expiry Date are required"}), 400
 
     conn = get_db_connection()
     if conn:
         try:
             cursor = conn.cursor()
-            
-            # Check if user exists
-            cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
-            if cursor.fetchone():
-                return jsonify({"error": "User with this email already exists"}), 409
-
-            # Insert new user
-            cursor.execute(
-                "INSERT INTO users (email, password, name, role) VALUES (%s, %s, %s, %s)",
-                (email, password, name, role)
-            )
+            cursor.execute("UPDATE institutions SET license_expiry = %s WHERE id = %s", (new_expiry, inst_id))
             conn.commit()
-            return jsonify({"message": "User created successfully"}), 201
+            return jsonify({"message": "License renewed successfully"}), 200
+        except Exception as e:
+            print(f"Error renewing license: {e}")
+            return jsonify({"error": "Internal Error"}), 500
+        finally:
+            cursor.close()
+            conn.close()
+    return jsonify({"error": "DB Error"}), 500
+
+
+@app.route("/api/delete-institution", methods=["POST"])
+@login_required
+def api_delete_institution():
+    if session.get("role") != "super_admin":
+        return jsonify({"error": "Unauthorized"}), 403
+
+    data = request.json
+    inst_id = data.get("institution_id")
+
+    if not inst_id:
+        return jsonify({"error": "Institution ID is required"}), 400
+
+    conn = get_db_connection()
+    if conn:
+        try:
+            cursor = conn.cursor()
+            # Users will be set to NULL via ON DELETE SET NULL constraint
+            cursor.execute("DELETE FROM institutions WHERE id = %s", (inst_id,))
+            conn.commit()
+            return jsonify({"message": "Institution deleted successfully"}), 200
+        except Exception as e:
+            print(f"Error deleting institution: {e}")
+            return jsonify({"error": "Internal Error"}), 500
+        finally:
+            cursor.close()
+            conn.close()
+    return jsonify({"error": "DB Error"}), 500
+
+
+@app.route("/api/create-user", methods=["POST"])
+@login_required
+def api_create_user():
+    current_role = session.get("role")
+    current_inst_id = session.get("institution_id")
+    
+    if current_role not in ["admin", "super_admin"]:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    data = request.json
+    email = data.get("email")
+    username = data.get("username")
+    password = data.get("password")
+    name = data.get("name")
+    target_role = data.get("role", "user")
+    
+    # Institution handling
+    target_inst_id = data.get("institution_id") 
+    new_inst_name = data.get("new_institution_name")
+    new_user_limit = int(data.get("user_limit", 10))
+    new_admin_limit = int(data.get("admin_limit", 1))
+
+    if not all([email, username, password, name]):
+        return jsonify({"error": "Missing required fields"}), 400
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    try:
+        cursor = conn.cursor(dictionary=True)
+
+        # 1. PERMISSION CHECK
+        if current_role != "super_admin":
+            # Inst Admin Restrictions
+            if target_role == "super_admin":
+                return jsonify({"error": "You cannot create Super Admins."}), 403
+            
+            # Forced to own institution
+            target_inst_id = current_inst_id
+            
+            # Cannot create new institutions
+            if new_inst_name:
+                return jsonify({"error": "Only Super Admins can create institutions."}), 403
+        else:
+            # Super Admin Logic
+            if target_role == "super_admin":
+                 if not (session.get("user") and session.get("role") == "super_admin"):
+                     # Double check (redundant but safe)
+                     return jsonify({"error": "Only Super Admins can create Super Admins."}), 403
+                 target_inst_id = None # Super Admins have no institution
+
+        # 2. CREATE INSTITUTION (If requested by Super Admin)
+        if new_inst_name:
+            # Check exist
+            cursor.execute("SELECT id FROM institutions WHERE name = %s", (new_inst_name,))
+            if cursor.fetchone():
+                return jsonify({"error": f"Institution '{new_inst_name}' already exists."}), 409
+            
+            cursor.execute("INSERT INTO institutions (name, user_limit, admin_limit) VALUES (%s, %s, %s)", 
+                           (new_inst_name, new_user_limit, new_admin_limit))
+            target_inst_id = cursor.lastrowid
+            conn.commit()
+
+        # 3. SEAT LIMIT CHECK (If assigned to an institution)
+        if target_inst_id:
+            # Get limits
+            cursor.execute("SELECT * FROM institutions WHERE id = %s", (target_inst_id,))
+            inst = cursor.fetchone()
+            if not inst:
+                return jsonify({"error": "Invalid Institution ID"}), 400
+            
+            if target_role == "user":
+                cursor.execute("SELECT COUNT(*) as count FROM users WHERE institution_id = %s AND role = 'user'", (target_inst_id,))
+                count = cursor.fetchone()['count']
+                if count >= inst['user_limit']:
+                     return jsonify({"error": f"User seat limit reached for {inst['name']} ({inst['user_limit']} max)."}), 409
+            
+            elif target_role == "admin":
+                cursor.execute("SELECT COUNT(*) as count FROM users WHERE institution_id = %s AND role = 'admin'", (target_inst_id,))
+                count = cursor.fetchone()['count']
+                if count >= inst['admin_limit']:
+                     return jsonify({"error": f"Admin seat limit reached for {inst['name']} ({inst['admin_limit']} max)."}), 409
+
+
+        # 4. DUPLICATE CHECK
+        cursor.execute("SELECT id FROM users WHERE email = %s OR username = %s", (email, username))
+        if cursor.fetchone():
+            return jsonify({"error": "User with this email or username already exists"}), 409
+
+        # 5. INSERT USER
+        cursor.execute(
+            "INSERT INTO users (email, username, password, name, role, institution_id) VALUES (%s, %s, %s, %s, %s, %s)",
+            (email, username, password, name, target_role, target_inst_id)
+        )
+        conn.commit()
+        return jsonify({"message": "User created successfully"}), 201
+
+    except Exception as e:
+        print(f"Error creating user: {e}")
+        return jsonify({"error": f"Internal Error: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route("/api/users", methods=["GET"])
+@login_required
+def api_get_users():
+    current_role = session.get("role")
+    current_inst_id = session.get("institution_id")
+    
+    if current_role not in ["admin", "super_admin"]:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    conn = get_db_connection()
+    if conn:
+        try:
+            cursor = conn.cursor(dictionary=True)
+            
+            if current_role == "super_admin":
+                # Get ALL users with institution name
+                query = """
+                SELECT u.id, u.name, u.email, u.username, u.role, u.institution_id, i.name as institution_name 
+                FROM users u 
+                LEFT JOIN institutions i ON u.institution_id = i.id
+                WHERE u.email != %s
+                """
+                cursor.execute(query, (session["user"],))
+            else:
+                # Inst Admin: Get users from OWN institution only
+                query = """
+                SELECT u.id, u.name, u.email, u.username, u.role, u.institution_id, i.name as institution_name
+                FROM users u
+                LEFT JOIN institutions i ON u.institution_id = i.id
+                WHERE u.institution_id = %s AND u.email != %s
+                """
+                cursor.execute(query, (current_inst_id, session["user"]))
+                
+            users = cursor.fetchall()
+            
+            # Fetch Institution Stats for the valid view
+            inst_stats = {}
+            if current_role == "super_admin":
+                 # Shouldn't need this for user list, but maybe useful for dashboard? 
+                 # Let's keep it simple for now.
+                 pass
+            elif current_inst_id:
+                 cursor.execute("SELECT * FROM institutions WHERE id=%s", (current_inst_id,))
+                 inst = cursor.fetchone()
+                 if inst:
+                     cursor.execute("SELECT role, COUNT(*) as c FROM users WHERE institution_id=%s GROUP BY role", (current_inst_id,))
+                     counts = {row['role']: row['c'] for row in cursor.fetchall()}
+                     inst_stats = {
+                         "user_limit": inst['user_limit'],
+                         "admin_limit": inst['admin_limit'],
+                         "user_count": counts.get('user', 0),
+                         "admin_count": counts.get('admin', 0)
+                     }
+
+            return jsonify({"users": users, "stats": inst_stats})
 
         except Exception as e:
-            print(f"Error creating user: {e}")
+            print(f"Error fetching users: {e}")
+            return jsonify({"error": "Internal database error"}), 500
+        finally:
+            cursor.close()
+            conn.close()
+    
+    return jsonify({"error": "Database connection failed"}), 500
+
+@app.route("/api/delete-user", methods=["POST"])
+@login_required
+def api_delete_user():
+    current_role = session.get("role")
+    current_inst_id = session.get("institution_id")
+
+    if current_role not in ["admin", "super_admin"]:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    data = request.json
+    email_to_delete = data.get("email")
+
+    if not email_to_delete:
+        return jsonify({"error": "Email is required"}), 400
+
+    if email_to_delete == session.get("user"):
+        return jsonify({"error": "You cannot delete your own account while logged in."}), 400
+
+    conn = get_db_connection()
+    if conn:
+        try:
+            cursor = conn.cursor(dictionary=True)
+            
+            # Check target user
+            cursor.execute("SELECT id, role, institution_id FROM users WHERE email = %s", (email_to_delete,))
+            target = cursor.fetchone()
+            
+            if not target:
+                return jsonify({"error": "User not found"}), 404
+
+            # PERMISSION CHECKS
+            if current_role != "super_admin":
+                # Inst Admin can only delete users in their own institution
+                if target['institution_id'] != current_inst_id:
+                    return jsonify({"error": "Unauthorized: User belongs to another institution."}), 403
+                
+                # Inst Admin cannot delete Super Admins (unlikely via Inst ID check, but safe)
+                if target['role'] == "super_admin":
+                     return jsonify({"error": "You cannot delete Super Admins."}), 403
+
+            # Delete
+            cursor.execute("DELETE FROM users WHERE email = %s", (email_to_delete,))
+            conn.commit()
+            
+            return jsonify({"message": f"User {email_to_delete} deleted successfully"}), 200
+
+        except Exception as e:
+            print(f"Error deleting user: {e}")
             return jsonify({"error": "Internal database error"}), 500
         finally:
             cursor.close()

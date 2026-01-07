@@ -151,11 +151,11 @@
             <span class="nav-text">Diagnostics</span>
         </a>
 
-        {% if session.get('role') == 'admin' %}
+        {% if session.get('role') in ['admin', 'super_admin'] %}
         <a href="{{ url_for('create_user') }}"
             class="nav-item {% if request.endpoint == 'create_user' %}active{% endif %}">
             <span>➕</span>
-            <span class="nav-text">Create User</span>
+            <span class="nav-text">User Management</span>
         </a>
         {% endif %}
     </div>
