@@ -9,15 +9,11 @@ import os
 import csv
 import traceback
 
-# -------------------------------------------------
-# HELPERS
-# -------------------------------------------------
+import traceback
+
 def safe_username(email: str) -> str:
     return email.replace("@", "_").replace(".", "_")
 
-# -------------------------------------------------
-# ROUTES
-# -------------------------------------------------
 def index():
     return render_template("fasta_compare.html")
 

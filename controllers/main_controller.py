@@ -11,12 +11,8 @@ from models.newpipeline import run_pipeline_async as run_specific_tool_pipeline
 import shutil
 import re
 
-# -----------------------------
-# ANSI STRIPPER (for clean logs)
-# -----------------------------
-# -----------------------------
-# ANSI STRIPPER (for clean logs)
-# -----------------------------
+import re
+
 ANSI_ESCAPE = re.compile(r'\x1B[@-_][0-?]*[ -/]*[@-~]')
 
 def strip_ansi(text: str) -> str:
@@ -40,9 +36,6 @@ def terminate_pipeline(username: str, run_id: str) -> bool:
     )
     return True
 
-# -----------------------------
-# TOOL DEFINITIONS
-# -----------------------------
 ALL_TOOLS = {
     "porechop",
     "filtlong",
@@ -56,9 +49,6 @@ ALL_TOOLS = {
 
 PIPELINE_RUNS_DIR = "pipeline_runs"
 
-# -----------------------------
-# HELPERS
-# -----------------------------
 def safe_username(email: str) -> str:
     return email.replace("@", "_").replace(".", "_")
 

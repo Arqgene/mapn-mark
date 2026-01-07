@@ -21,10 +21,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# =============================
-# APP CONFIG
-# =============================
-
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "dev_key_fallback_do_not_use_in_prod")
 
@@ -33,36 +29,24 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 * 1024
 
 PIPELINE_RUNS_DIR = "pipeline_runs"
 
-# =============================
-# HELPERS
-# =============================
-
 def safe_username(email: str) -> str:
     return email.replace("@", "_").replace(".", "_")
 
 
 def get_run_dir(email: str, run_id: str) -> Path:
-    # 1. Canonical User Path (New standard)
     user_path = Path(PIPELINE_RUNS_DIR) / safe_username(email) / run_id
     if user_path.exists():
         return user_path
 
-    # 2. Legacy Flat Path (Old BLAST runs)
     flat_path = Path(PIPELINE_RUNS_DIR) / run_id
     if flat_path.exists():
         return flat_path
 
-    # Default to user path for new creation
     return user_path
 
 
 # =============================
 # LOGIN REQUIRED DECORATOR
-# =============================
-
-# =============================
-# SESSION MANAGEMENT (Idle Timeout + Logout on Close)
-# =============================
 from datetime import timedelta, datetime
 
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
@@ -105,10 +89,6 @@ def login_required(f):
         return f(*args, **kwargs)
     return wrapper
 
-# =============================
-# AUTH ROUTES
-# =============================
-
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if "user" in session:
@@ -149,10 +129,6 @@ def logout():
     flash("Logged out successfully.", "success")
     return redirect(url_for("login"))
 
-
-# =============================
-# ADMIN ROUTES
-# =============================
 
 @app.route("/create-user")
 @login_required
@@ -203,10 +179,6 @@ def api_create_user():
             conn.close()
     
     return jsonify({"error": "Database connection failed"}), 500
-
-# =============================
-# SAFE ZIP CREATION
-# =============================
 
 # def create_run_zip(email: str, run_id: str):
 #     run_dir = get_run_dir(email, run_id)
@@ -277,10 +249,6 @@ def build_file_tree(paths):
         cur.setdefault("__files__", []).append(parts[-1])
     return tree
 
-# =============================
-# CORE ROUTES
-# =============================
-
 @app.route("/", methods=["GET", "POST"])
 @login_required
 def index():
@@ -323,10 +291,6 @@ def check_run_status(run_id):
 def cleanup_run(run_id):
     return diagnostics_controller.cleanup_run(run_id)
 
-# =============================
-# AI CHAT
-# =============================
-
 client =OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 @app.route("/chat", methods=["POST"])
@@ -346,9 +310,6 @@ def chat():
 
     return jsonify({"reply": response.choices[0].message.content})
 
-# =============================
-# DOWNLOAD ROUTES
-# =============================
 @app.route("/status_download/<run_id>")
 @login_required
 def status_download(run_id):
@@ -415,10 +376,6 @@ def prepare_download(run_id):
     get_or_create_run_zip(session["user"], run_id)
 
     return jsonify({"ready": True})
-
-# =============================
-# FILE DOWNLOAD (SINGLE FILE)
-# =============================
 
 @app.route("/download-file/<username>/<run_id>")
 @login_required

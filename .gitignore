@@ -23,3 +23,5 @@ pip-delete-this-directory.txt
 # Project specific
 diag_file/test.fastq
 *.log
+
+.env
