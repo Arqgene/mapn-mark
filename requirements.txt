@@ -6,4 +6,5 @@ waitress
 openai
 mysql-connector-python
 psutil
-
+joblib
+matplotlib

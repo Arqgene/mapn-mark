@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 ENV_NAME="pipeline"
+EXPECTED_PYTHON_MAJOR=3
+EXPECTED_PYTHON_MINOR=10
 
 echo "=========================================="
 echo " Bioinformatics Pipeline Installer"
@@ -20,28 +22,26 @@ fi
 echo "✅ Conda detected"
 
 # -----------------------------
-# Initialize Conda (non-interactive)
+# Initialize Conda
 # -----------------------------
 source "$(conda info --base)/etc/profile.d/conda.sh"
 
 # -----------------------------
-# Ensure Mamba is available
+# Ensure Mamba
 # -----------------------------
 if ! command -v mamba &> /dev/null; then
     echo "📦 Installing mamba into base environment"
     conda activate base
     conda install -y -n base -c conda-forge mamba
-else
-    echo "✅ Mamba detected"
 fi
 
 # -----------------------------
-# Create Conda environment (using mamba)
+# Create environment
 # -----------------------------
-if conda env list | grep -q "^$ENV_NAME "; then
+if conda env list | awk '{print $1}' | grep -qx "$ENV_NAME"; then
     echo "⚠️ Conda environment '$ENV_NAME' already exists"
 else
-    echo "📦 Creating Conda environment: $ENV_NAME (using mamba)"
+    echo "📦 Creating Conda environment: $ENV_NAME"
     mamba env create -f environment.yml
 fi
 
@@ -52,15 +52,23 @@ echo "🔁 Activating environment"
 conda activate "$ENV_NAME"
 
 # -----------------------------
-# Install pip dependencies
+# Validate Python version
 # -----------------------------
-if [ -f "requirements.txt" ]; then
-    echo "📦 Installing Python dependencies"
-    pip install --upgrade pip
-    pip install -r requirements.txt
-else
-    echo "⚠️ requirements.txt not found – skipping pip install"
+PY_VERSION=$(python - <<EOF
+import sys
+print(f"{sys.version_info.major}.{sys.version_info.minor}")
+EOF
+)
+
+if [[ "$PY_VERSION" != "$EXPECTED_PYTHON_MAJOR.$EXPECTED_PYTHON_MINOR" ]]; then
+    echo "❌ ERROR: Python $PY_VERSION detected"
+    echo "   Expected Python $EXPECTED_PYTHON_MAJOR.$EXPECTED_PYTHON_MINOR"
+    exit 1
 fi
+
+echo "✅ Python version OK: $PY_VERSION"
+
+
 
 # -----------------------------
 # Verify key tools
@@ -75,7 +83,6 @@ TOOLS=(
   racon
   fastqc
   quast
-  blastn
   prokka
 )
 

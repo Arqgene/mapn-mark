@@ -255,7 +255,7 @@ def get_log(run_id):
     username = session.get("user")
     run_dir = get_run_dir(username, run_id)
 
-    log_file = os.path.join(run_dir, "pipeline_output.log")
+    log_file = os.path.join(run_dir, "pipeline.log")
     cancel_flag = os.path.join(run_dir, "CANCEL")
 
     if os.path.exists(cancel_flag):

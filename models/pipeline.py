@@ -24,16 +24,26 @@ def run_script_native(script_contents, output_file):
 
     os.chmod(script_path, 0o755)
 
-    with open(output_file, "w", encoding="utf-8") as logf:
-        process = subprocess.Popen(
-            ["bash", script_path],
-            stdout=logf,
-            stderr=subprocess.STDOUT,
-            universal_newlines=True,
-            bufsize=1
-        )
-        process.wait()
+    # Start process
+    process = subprocess.Popen(
+        ["conda", "run", "-n", "pipeline", "bash", script_path],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,         
+    )
 
+    # Stream logs in real time
+    with open(output_file, "w", encoding="utf-8") as logf:
+        for line in process.stdout:
+            logf.write(line)
+            logf.flush()
+
+    ret = process.wait()
+    if ret != 0:
+        raise RuntimeError(f"Pipeline aborted with exit code {ret}")
+
+    
 
 # -------------------------------------------------
 # MAIN PIPELINE ENTRY (Native Ubuntu)

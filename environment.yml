@@ -5,7 +5,8 @@ channels:
   - bioconda
 
 dependencies:
-  - python=3.7
+  # Python (MUST be pinned)
+  - python=3.10
 
   # Core bioinformatics tools
   - porechop
@@ -16,15 +17,21 @@ dependencies:
   - racon
   - fastqc
   - prokka
-  - quast
+  - quast=5.2.0
 
-  # Runtime
+  - matplotlib
+  - joblib
+
+  # Pip runtime
   - pip
 
-  # Python app dependencies
+  # Python app dependencies (pip)
   - pip:
       - Flask
       - Flask-Session
       - python-dotenv
       - requests
       - waitress
+      - openai
+      - mysql-connector-python
+      - psutil
