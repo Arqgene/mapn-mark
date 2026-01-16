@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>MapNMark | My Runs</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- MapNMark Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='index_styles.css') }}">
+    <!-- Chatbot Styles -->
+    <style>
+        /* Chatbot Styles */
+        .chatbot-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9998;
+            width: 350px;
+            max-width: 90vw;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .chatbot-toggle {
+            background: linear-gradient(135deg, rgba(102, 252, 241, 0.9), rgba(45, 212, 191, 0.8));
+            border: 2px solid rgba(102, 252, 241, 0.5);
+            color: #0f172a;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.5em;
+            box-shadow: 0 8px 25px rgba(102, 252, 241, 0.4);
+            transition: all 0.3s ease;
+            margin-left: auto;
+            margin-right: 0;
+        }
+
+        .chatbot-toggle:hover {
+            transform: scale(1.1) rotate(5deg);
+            box-shadow: 0 12px 35px rgba(102, 252, 241, 0.6);
+            background: linear-gradient(135deg, rgba(102, 252, 241, 1), rgba(45, 212, 191, 0.9));
+        }
+
+        .chatbot-toggle.active {
+            transform: rotate(45deg);
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.9), rgba(220, 38, 38, 0.8));
+            border-color: rgba(239, 68, 68, 0.5);
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+        }
+
+        .chatbot-window {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(15px);
+            border: 2px solid rgba(102, 252, 241, 0.3);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            display: none;
+            flex-direction: column;
+            height: 500px;
+            max-height: 70vh;
+            overflow: hidden;
+            animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .chatbot-window.active {
+            display: flex;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .chatbot-header {
+            background: linear-gradient(135deg, rgba(102, 252, 241, 0.2), rgba(45, 212, 191, 0.1));
+            border-bottom: 2px solid rgba(102, 252, 241, 0.3);
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chatbot-title {
+            color: #66fcf1;
+            font-weight: 700;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chatbot-close {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.2em;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .chatbot-close:hover {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            transform: rotate(90deg);
+        }
+
+        .chatbot-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .chatbot-body::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chatbot-body::-webkit-scrollbar-track {
+            background: rgba(102, 252, 241, 0.1);
+            border-radius: 3px;
+        }
+
+        .chatbot-body::-webkit-scrollbar-thumb {
+            background: rgba(102, 252, 241, 0.3);
+            border-radius: 3px;
+        }
+
+        .message {
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            line-height: 1.5;
+            font-size: 0.95em;
+            animation: messageSlide 0.3s ease;
+        }
+
+        @keyframes messageSlide {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .user-message {
+            background: linear-gradient(135deg, rgba(102, 252, 241, 0.3), rgba(45, 212, 191, 0.2));
+            border: 1px solid rgba(102, 252, 241, 0.4);
+            color: #66fcf1;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .bot-message {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            color: #e2e8f0;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+
+        .bot-message.thinking {
+            opacity: 0.7;
+            font-style: italic;
+        }
+
+        .tool-tip {
+            display: inline-block;
+            background: rgba(102, 252, 241, 0.2);
+            color: #66fcf1;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.85em;
+            margin: 0 5px;
+            border: 1px solid rgba(102, 252, 241, 0.3);
+        }
+
+        .chatbot-footer {
+            border-top: 2px solid rgba(102, 252, 241, 0.2);
+            padding: 15px 20px;
+            display: flex;
+            gap: 10px;
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        .chatbot-input {
+            flex: 1;
+            background: rgba(30, 41, 59, 0.7);
+            border: 2px solid rgba(102, 252, 241, 0.2);
+            border-radius: 12px;
+            color: #e2e8f0;
+            padding: 12px 16px;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+        }
+
+        .chatbot-input:focus {
+            outline: none;
+            border-color: rgba(102, 252, 241, 0.5);
+            box-shadow: 0 0 0 3px rgba(102, 252, 241, 0.1);
+        }
+
+        .chatbot-input::placeholder {
+            color: #94a3b8;
+        }
+
+        .chatbot-send {
+            background: linear-gradient(135deg, rgba(102, 252, 241, 0.3), rgba(45, 212, 191, 0.2));
+            border: 2px solid rgba(102, 252, 241, 0.4);
+            color: #66fcf1;
+            border-radius: 12px;
+            padding: 12px 20px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 80px;
+            justify-content: center;
+        }
+
+        .chatbot-send:hover:not(:disabled) {
+            background: linear-gradient(135deg, rgba(102, 252, 241, 0.4), rgba(45, 212, 191, 0.3));
+            border-color: #66fcf1;
+            transform: translateY(-2px);
+        }
+
+        .chatbot-send:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .quick-questions {
+            padding: 15px 20px;
+            background: rgba(30, 41, 59, 0.5);
+            border-top: 1px solid rgba(102, 252, 241, 0.1);
+        }
+
+        .quick-questions-title {
+            color: #94a3b8;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .quick-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .quick-btn {
+            background: rgba(102, 252, 241, 0.1);
+            border: 1px solid rgba(102, 252, 241, 0.2);
+            color: #66fcf1;
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: calc(50% - 4px);
+            text-align: center;
+        }
+
+        .quick-btn:hover {
+            background: rgba(102, 252, 241, 0.2);
+            border-color: rgba(102, 252, 241, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 10px 16px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #66fcf1;
+            border-radius: 50%;
+            opacity: 0.6;
+            animation: typingBounce 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typingBounce {
+
+            0%,
+            60%,
+            100% {
+                transform: translateY(0);
+                opacity: 0.6;
+            }
+
+            30% {
+                transform: translateY(-10px);
+                opacity: 1;
+            }
+        }
+
+        /* Welcome message */
+        .welcome-message {
+            text-align: center;
+            padding: 20px;
+            background: rgba(102, 252, 241, 0.1);
+            border-radius: 12px;
+            border: 1px solid rgba(102, 252, 241, 0.2);
+            margin-bottom: 15px;
+        }
+
+        .welcome-title {
+            color: #66fcf1;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .welcome-text {
+            color: #cbd5e1;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+
+        /* Download-specific loading overlay */
+        .download-loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 10, 25, 0.95);
+            backdrop-filter: blur(20px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10001;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .download-loading.show {
+            display: flex;
+            opacity: 1;
+            animation: fadeIn 0.3s ease;
+        }
+
+        /* Flash Message Animation for show */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .download-loading-card {
+            background: linear-gradient(135deg, rgba(26, 26, 46, 0.95), rgba(15, 23, 42, 0.9));
+            border: 2px solid rgba(139, 92, 246, 0.3);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .download-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(139, 92, 246, 0.2);
+            border-top-color: #a78bfa;
+            border-radius: 50%;
+            margin: 0 auto 25px;
+            animation: spin 1s linear infinite;
+        }
+
+        .download-loading-card h3 {
+            color: #a78bfa;
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+
+        .download-loading-card p {
+            color: #cbd5e1;
+            font-size: 1em;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .chatbot-container {
+                width: 320px;
+                right: 10px;
+                bottom: 10px;
+            }
+
+            .chatbot-window {
+                height: 450px;
+            }
+
+            .chatbot-toggle {
+                width: 50px;
+                height: 50px;
+                font-size: 1.3em;
+            }
+
+            .download-card {
+                padding: 30px 20px;
+            }
+
+            .download-title {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .chatbot-container {
+                width: calc(100vw - 40px);
+                right: 20px;
+                bottom: 80px;
+            }
+
+            .chatbot-window {
+                height: 400px;
+                max-height: 60vh;
+            }
+
+            .quick-buttons {
+                flex-direction: column;
+            }
+
+            .quick-btn {
+                min-width: 100%;
+            }
+        }
+
+        /* Main Page Styles */
+        body {
+            margin: 0;
+            font-family: Inter, system-ui, sans-serif;
+            color: #e5e7eb;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            padding: 100px 20px 40px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.3rem;
+            color: #66fcf1;
+            margin-bottom: 40px;
+        }
+
+        .user-info-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            background: rgba(15, 23, 42, .95);
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(102, 252, 241, .3);
+            z-index: 1000;
+            align-items: center;
+        }
+
+        .nav-btn,
+        .logout-btn {
+            text-decoration: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: .9em;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn {
+            background: rgba(102, 252, 241, .2);
+            color: #66fcf1;
+            border: 1px solid rgba(102, 252, 241, .3);
+        }
+
+        .nav-btn:hover {
+            background: rgba(102, 252, 241, .3);
+            transform: translateY(-2px);
+        }
+
+        .logout-btn {
+            background: rgba(239, 68, 68, .25);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, .3);
+        }
+
+        .logout-btn:hover {
+            background: rgba(239, 68, 68, .35);
+            transform: translateY(-2px);
+        }
+
+        .run-card {
+            background: rgba(15, 23, 42, .95);
+            border-radius: 16px;
+            padding: 22px;
+            margin-bottom: 28px;
+            border: 1px solid rgba(102, 252, 241, .25);
+            transition: all 0.3s ease;
+        }
+
+        .run-card:hover {
+            border-color: rgba(102, 252, 241, .4);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .run-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .run-id {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #66fcf1;
+        }
+
+        .run-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .action-btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: 1px solid;
+            cursor: pointer;
+            font-size: .9rem;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .toggle-files-btn {
+            background: rgba(30, 41, 59, .7);
+            color: #cbd5e1;
+            border-color: rgba(148, 163, 184, .3);
+        }
+
+        .toggle-files-btn:hover {
+            background: rgba(30, 41, 59, .9);
+            color: #ffffff;
+        }
+
+        .download-all-btn {
+            background: rgba(102, 252, 241, .2);
+            color: #66fcf1;
+            border-color: rgba(102, 252, 241, .4);
+        }
+
+        .download-all-btn:hover {
+            background: rgba(102, 252, 241, .3);
+        }
+
+        .delete-btn {
+            background: rgba(239, 68, 68, .2);
+            color: #f87171;
+            border-color: rgba(239, 68, 68, .4);
+        }
+
+        .delete-btn:hover {
+            background: rgba(239, 68, 68, .3);
+        }
+
+        .stop-btn {
+            background: rgba(245, 158, 11, .2);
+            color: #fbbf24;
+            border-color: rgba(245, 158, 11, .4);
+        }
+
+        .stop-btn:hover {
+            background: rgba(245, 158, 11, .3);
+        }
+
+        .view-btn {
+            background: rgba(59, 130, 246, .2);
+            color: #60a5fa;
+            border-color: rgba(59, 130, 246, .4);
+        }
+
+        .view-btn:hover {
+            background: rgba(59, 130, 246, .3);
+        }
+
+        .run-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85rem;
+            color: #94a3b8;
+            margin-top: 5px;
+            align-items: center;
+        }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            border: 1px solid;
+        }
+
+        .status-running {
+            background: rgba(102, 252, 241, 0.1);
+            color: #66fcf1;
+            border-color: rgba(102, 252, 241, 0.3);
+            animation: pulse 2s infinite;
+        }
+
+        .status-completed,
+        .status-complete {
+            background: rgba(34, 197, 94, 0.1);
+            color: #4ade80;
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+
+        .status-cancelled,
+        .status-failed {
+            background: rgba(239, 68, 68, 0.1);
+            color: #f87171;
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .status-legacy {
+            background: rgba(148, 163, 184, 0.1);
+            color: #cbd5e1;
+            border-color: rgba(148, 163, 184, 0.3);
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 0.7;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.7;
+            }
+        }
+
+        .files-container {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .files-container.expanded {
+            display: block;
+        }
+
+        /* ================= FILE EXPLORER ================= */
+
+        .file-explorer {
+            font-family: monospace;
+            margin-top: 10px;
+        }
+
+        .folder {
+            margin-left: 14px;
+            margin-bottom: 8px;
+        }
+
+        .folder-header {
+            cursor: pointer;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: rgba(30, 41, 59, .6);
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .folder-header:hover {
+            background: rgba(102, 252, 241, .15);
+        }
+
+        .folder-content {
+            display: none;
+            margin-left: 24px;
+            border-left: 2px solid rgba(102, 252, 241, .2);
+            padding-left: 12px;
+            margin-top: 8px;
+        }
+
+        .folder.open>.folder-content {
+            display: block;
+        }
+
+        .file {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(15, 23, 42, .6);
+            border-radius: 8px;
+            margin-bottom: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .file:hover {
+            background: rgba(30, 41, 59, .8);
+        }
+
+        .file a {
+            text-decoration: none;
+            color: #66fcf1;
+            font-size: .85rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: rgba(102, 252, 241, .1);
+            border: 1px solid rgba(102, 252, 241, .2);
+            transition: all 0.3s ease;
+        }
+
+        .file a:hover {
+            background: rgba(102, 252, 241, .2);
+            transform: translateY(-1px);
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+        }
+
+        .empty-state h2 {
+            color: #66fcf1;
+            margin-bottom: 20px;
+        }
+
+        /* Flash messages */
+        .flash-messages {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .flash-message {
+            padding: 12px 20px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid;
+            animation: slideIn 0.3s ease;
+        }
+
+        .flash-success {
+            border-color: rgba(34, 197, 94, 0.4);
+            color: #4ade80;
+        }
+
+        .flash-error {
+            border-color: rgba(239, 68, 68, 0.4);
+            color: #f87171;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Filter Controls */
+        .filter-btn {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            color: #94a3b8;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9em;
+        }
+
+        .filter-btn:hover {
+            background: rgba(148, 163, 184, 0.1);
+            color: #e2e8f0;
+        }
+
+        .filter-btn.active {
+            background: rgba(102, 252, 241, 0.15);
+            border-color: #66fcf1;
+            color: #66fcf1;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Background -->
+    <div class="dna-background">
+        <div class="dna-strand"></div>
+        <div class="dna-strand"></div>
+        <div class="dna-strand"></div>
+        <div class="dna-strand"></div>
+        <div class="dna-strand"></div>
+    </div>
+
+    <!-- DOWNLOAD LOADING OVERLAY -->
+    <div id="downloadLoading" class="download-loading">
+        <div class="download-loading-card">
+            <div class="download-spinner"></div>
+            <h3 id="downloadTitle">Preparing Download</h3>
+            <p id="downloadMessage">Packaging results...</p>
+            <div class="download-progress">
+                <div class="download-progress-bar" id="downloadProgressBar"></div>
+            </div>
+            <p id="downloadStatus" style="color: #94a3b8; font-size: 0.9em; margin-top: 10px;">
+                Please wait while we prepare your files...
+            </p>
+        </div>
+    </div>
+
+    <!-- Chatbot Container -->
+    <div class="chatbot-container">
+        <div class="chatbot-toggle" id="chatbotToggle">💬</div>
+        <div class="chatbot-window" id="chatbotWindow">
+            <div class="chatbot-header">
+                <div class="chatbot-title">
+                    <span>🤖</span>
+                    MapNMark Assistant
+                </div>
+                <button class="chatbot-close" id="chatbotClose">✕</button>
+            </div>
+
+            <div class="chatbot-body" id="chatbotBody">
+                <!-- Welcome message -->
+                <div class="welcome-message">
+                    <div class="welcome-title">👋 Hello! I'm your MapNMark Assistant</div>
+                    <div class="welcome-text">
+                        I can help you understand your pipeline runs,
+                        explain analysis results, or answer questions about
+                        bioinformatics tools. Try asking me something!
+                    </div>
+                </div>
+
+                <!-- Quick questions section -->
+                <div class="quick-questions">
+                    <div class="quick-questions-title">💡 Quick Questions:</div>
+                    <div class="quick-buttons">
+                        <button class="quick-btn"
+                            onclick="askQuickQuestion('What does the Flye assembly output mean?')">Assembly
+                            Results</button>
+                        <button class="quick-btn" onclick="askQuickQuestion('How to interpret QUAST results?')">QUAST
+                            Reports</button>
+                        <button class="quick-btn"
+                            onclick="askQuickQuestion('What files should I download from my run?')">Important
+                            Files</button>
+                        <button class="quick-btn" onclick="askQuickQuestion('How to delete old runs?')">Manage
+                            Runs</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chatbot-footer">
+                <input type="text" class="chatbot-input" id="chatbotInput"
+                    placeholder="Ask about your runs, results, or tools..." onkeypress="handleChatInputKeypress(event)">
+                <button class="chatbot-send" id="chatbotSend" onclick="sendChatMessage()">
+                    <span>Send</span>
+                    <span>➤</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
+    <div class="flash-messages">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="flash-message flash-{{ category }}">
+            {% if category == 'success' %}
+            ✅
+            {% elif category == 'error' %}
+            ❌
+            {% else %}
+            ℹ️
+            {% endif %}
+            {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- User Info -->
+    {% include 'components/navbar.html' %}
+
+    <!-- Main Content -->
+    <div class="container">
+        <h1>📁 My Pipeline Runs</h1>
+
+        <!-- Filter Controls -->
+        <div class="filter-controls" style="margin-bottom: 20px; display: flex; gap: 10px;">
+            <button class="filter-btn active" onclick="filterRuns('all')" id="btn-all">All Runs</button>
+            <button class="filter-btn" onclick="filterRuns('analysis')" id="btn-analysis">🧬 Analysis</button>
+            <button class="filter-btn" onclick="filterRuns('blast')" id="btn-blast">⚡ BLAST</button>
+        </div>
+
+        {% if runs %}
+        {% for run in runs %}
+        <div class="run-card" id="run-{{ run['run_id'] }}" data-run-type="{{ run['run_type']|default('analysis') }}">
+
+            <div class="run-header">
+                <div class="run-info">
+                    <div class="run-id">{{ run["run_id"] }}</div>
+                    <div class="run-meta">
+                        <span class="status-badge status-{{ run['status']|lower }}">
+                            {{ run['status'] }}
+                        </span>
+
+                        <!-- Dynamic Timer for Running Instances -->
+                        {% if run['status'] == 'running' %}
+                        <span class="time-badge running-timer"
+                            data-start-time="{{ run['start_time'].timestamp() * 1000 if run['start_time'] else '' }}">
+                            ⏱️ Calculating...
+                        </span>
+                        {% else %}
+                        <span class="time-badge">
+                            🕒 {{ run['start_time'].strftime('%Y-%m-%d %H:%M') if run['start_time'] else 'Unknown' }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="run-actions">
+                    {% if run['status'] == 'running' %}
+                    <form method="POST" action="{{ url_for('cancel_run', run_id=run['run_id']) }}"
+                        style="display:inline" onsubmit="return confirm('Stop this running pipeline?')">
+                        <button class="action-btn stop-btn">🛑 Stop</button>
+                    </form>
+                    {% endif %}
+
+                    {% if run.get('run_type') == 'blast' or run['run_id'].startswith('blast_') %}
+                    <a href="{{ url_for('blast_status', run_id=run['run_id']) }}" class="action-btn view-btn">
+                        👁️ View
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('status', run_id=run['run_id']) }}" class="action-btn view-btn">
+                        👁️ View
+                    </a>
+                    {% endif %}
+
+                    <!-- Common Actions: Files Button -->
+                    <button class="action-btn toggle-files-btn" onclick="toggleFiles(event, '{{ run['run_id'] }}')">
+                        📂 Files
+                    </button>
+
+                    <!-- BLAST Specific: CSV -->
+                    {% if (run.get('run_type') == 'blast' or run['run_id'].startswith('blast_')) and run['status'] ==
+                    'completed' %}
+                    <a class="action-btn download-all-btn"
+                        href="{{ url_for('download_blast_csv', run_id=run['run_id']) }}"
+                        style="background: rgba(16, 185, 129, 0.2); color: #10b981;">
+                        ⬇️ CSV
+                    </a>
+                    {% endif %}
+
+                    <!-- Common Actions: Zip Download -->
+                    <!-- Common Actions: Zip Download -->
+                    {% if run['has_files'] and run['status'] != 'running' %}
+                    <a class="action-btn download-all-btn" href="#"
+                        data-prepare-url="{{ url_for('prepare_download', run_id=run['run_id']) }}"
+                        data-download-url="{{ url_for('download_all', username=safe_username(current_user), run_id=run['run_id']) }}"
+                        onclick="handleGlobalDownload(event, this)">
+                        📦 Zip
+                    </a>
+                    {% endif %}
+
+                    <form method="POST"
+                        action="{{ url_for('delete_run', username=safe_username(session['user']), run_id=run['run_id']) }}"
+                        style="display:inline"
+                        onsubmit="return confirm('Delete this run permanently? This action cannot be undone.')">
+                        <button class="action-btn delete-btn">🗑️</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="files-container" id="files-{{ run['run_id'] }}">
+                <div class="file-explorer">
+                    {% macro render_tree(tree, run_id, path_prefix='') %}
+                    {% for key, value in tree.items() %}
+                    {% if key == '__files__' %}
+                    {% for file in value %}
+                    <div class="file">
+                        <span>📄 {{ file }}</span>
+                        <a href="{{ url_for('download_file', username=safe_username(session['user']), run_id=run_id, path=path_prefix + file) }}"
+                            onclick="showFileDownloadOverlay(event)">
+                            Download
+                        </a>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="folder">
+                        <div class="folder-header" onclick="toggleFolder(event, this)">
+                            <span>📁 {{ key }}</span>
+                        </div>
+                        <div class="folder-content">
+                            {{ render_tree(value, run_id, path_prefix + key + '/') }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                    {% endmacro %}
+
+                    {{ render_tree(run["file_tree"], run['run_id']) }}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <!-- Empty State -->
+        <div class="empty-state">
+            <h2>📭 No Pipeline Runs Yet</h2>
+            <p>You haven't run any analysis pipelines yet.</p>
+            <p>Upload a FASTQ file from the home page to start your first analysis.</p>
+            <br>
+            <a href="{{ url_for('index') }}" class="action-btn download-all-btn" style="text-decoration: none;">
+                🚀 Start First Analysis
+            </a>
+        </div>
+        {% endif %}
+    </div>
+    <script>
+        // Filter functionality
+        function filterRuns(type) {
+            // Update buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${type}`).classList.add('active');
+
+            // Filter items
+            const cards = document.querySelectorAll('.run-card');
+            cards.forEach(card => {
+                const runType = (card.dataset.runType || '').toLowerCase();
+                const filterType = type.toLowerCase();
+
+                if (filterType === 'all' || runType === filterType) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        // Update Running Timers
+        function updateRunningTimers() {
+            const timers = document.querySelectorAll('.running-timer');
+            const now = Date.now();
+
+            timers.forEach(timer => {
+                const startTime = parseFloat(timer.dataset.startTime);
+                if (!isNaN(startTime)) {
+                    const elapsed = now - startTime;
+                    if (elapsed > 0) {
+                        const seconds = Math.floor((elapsed / 1000) % 60);
+                        const minutes = Math.floor((elapsed / (1000 * 60)) % 60);
+                        const hours = Math.floor((elapsed / (1000 * 60 * 60)));
+
+                        timer.textContent = `⏱️ ${hours}h ${minutes}m ${seconds}s elapsed`;
+                    }
+                }
+            });
+        }
+
+        // Run immediately and then every second
+        updateRunningTimers();
+        setInterval(updateRunningTimers, 1000);
+    </script>
+
+    <script>
+        // Chatbot functionality
+        let isChatbotOpen = false;
+        let isProcessingMessage = false;
+
+        const chatbotToggle = document.getElementById('chatbotToggle');
+        const chatbotWindow = document.getElementById('chatbotWindow');
+        const chatbotClose = document.getElementById('chatbotClose');
+        const chatbotBody = document.getElementById('chatbotBody');
+        const chatbotInput = document.getElementById('chatbotInput');
+        const chatbotSend = document.getElementById('chatbotSend');
+
+        // Toggle chatbot window
+        chatbotToggle.addEventListener('click', () => {
+            isChatbotOpen = !isChatbotOpen;
+            if (isChatbotOpen) {
+                chatbotWindow.classList.add('active');
+                chatbotToggle.classList.add('active');
+                chatbotInput.focus();
+
+                // Scroll to bottom
+                setTimeout(() => {
+                    chatbotBody.scrollTop = chatbotBody.scrollHeight;
+                }, 100);
+            } else {
+                chatbotWindow.classList.remove('active');
+                chatbotToggle.classList.remove('active');
+            }
+        });
+
+        // Close chatbot
+        chatbotClose.addEventListener('click', () => {
+            isChatbotOpen = false;
+            chatbotWindow.classList.remove('active');
+            chatbotToggle.classList.remove('active');
+        });
+
+        // Handle enter key in input
+        function handleChatInputKeypress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendChatMessage();
+            }
+        }
+
+        // Send message
+        async function sendChatMessage() {
+            const message = chatbotInput.value.trim();
+            if (!message || isProcessingMessage) return;
+
+            // Add user message
+            addMessage(message, 'user');
+            chatbotInput.value = '';
+            chatbotSend.disabled = true;
+            isProcessingMessage = true;
+
+            // Show typing indicator
+            showTypingIndicator();
+
+            try {
+                const response = await fetch("/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: message })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // Remove typing indicator
+                removeTypingIndicator();
+
+                // Add bot message
+                addMessage(data.reply, 'bot');
+
+            } catch (error) {
+                console.error('Chat error:', error);
+                removeTypingIndicator();
+                addMessage("Sorry, I'm having trouble connecting. Please try again later.", 'bot');
+            } finally {
+                isProcessingMessage = false;
+                chatbotSend.disabled = false;
+                chatbotInput.focus();
+            }
+        }
+
+        // Add message to chat
+        function addMessage(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            messageDiv.innerHTML = formatMessageText(text);
+
+            chatbotBody.appendChild(messageDiv);
+
+            // Scroll to bottom
+            setTimeout(() => {
+                chatbotBody.scrollTop = chatbotBody.scrollHeight;
+            }, 100);
+        }
+
+        // Format message text (highlight tool names)
+        function formatMessageText(text) {
+            const toolNames = [
+                'Porechop', 'Filtlong', 'Flye', 'Minimap2', 'Racon',
+                'FastQC', 'Prokka', 'QUAST', 'QIIME', 'Gene Identifier',
+                'Assembly', 'Annotation', 'Quality Control'
+            ];
+
+            let formatted = text;
+            toolNames.forEach(tool => {
+                const regex = new RegExp(`\\b${tool}\\b`, 'gi');
+                formatted = formatted.replace(regex, `<span class="tool-tip">${tool}</span>`);
+            });
+
+            return formatted;
+        }
+
+        // Show typing indicator
+        function showTypingIndicator() {
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message bot-message thinking';
+            typingDiv.id = 'typingIndicator';
+            typingDiv.innerHTML = `
+            <div class="typing-indicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        `;
+
+            chatbotBody.appendChild(typingDiv);
+            chatbotBody.scrollTop = chatbotBody.scrollHeight;
+        }
+
+        // Remove typing indicator
+        function removeTypingIndicator() {
+            const typingDiv = document.getElementById('typingIndicator');
+            if (typingDiv) {
+                typingDiv.remove();
+            }
+        }
+
+        // Quick question function
+        function askQuickQuestion(question) {
+            chatbotInput.value = question;
+            sendChatMessage();
+        }
+
+        // Initialize chatbot
+        function initializeChatbot() {
+            // Add sample conversation if chat is empty
+            if (chatbotBody.children.length === 2) { // Only welcome and quick questions
+                addMessage("I'm here to help you understand your pipeline runs! You can ask me about specific output files, how to interpret results, or get help with downloading and managing your analysis data.", 'bot');
+            }
+        }
+
+        // File explorer functions
+        function toggleFiles(event, runId) {
+            event.stopPropagation();
+            const box = document.getElementById(`files-${runId}`);
+            const button = event.target;
+            box.classList.toggle("expanded");
+
+            if (box.classList.contains("expanded")) {
+                button.innerHTML = '📁 Hide Files';
+            } else {
+                button.innerHTML = '📂 Show Files';
+            }
+        }
+
+        function toggleFolder(event, header) {
+            event.stopPropagation();
+            header.parentElement.classList.toggle("open");
+        }
+
+        // Download overlay functions
+        const downloadLoading = document.getElementById("downloadLoading");
+        const downloadTitle = document.getElementById("downloadTitle");
+        const downloadMessage = document.getElementById("downloadMessage"); // Note: ID changed in HTML
+        const downloadStatus = document.getElementById("downloadStatus");
+        const downloadProgressBar = document.getElementById("downloadProgressBar");
+        let isDownloading = false;
+
+        function handleGlobalDownload(event, element) {
+            event.preventDefault();
+            if (isDownloading) return;
+            isDownloading = true;
+
+            const prepareUrl = element.dataset.prepareUrl;
+            const downloadUrl = element.dataset.downloadUrl;
+
+            // Show popup immediately
+            downloadLoading.classList.add("show");
+            downloadTitle.textContent = "Preparing Download";
+            downloadMessage.textContent = "Packaging results...";
+            downloadProgressBar.style.width = "100%";
+            downloadStatus.textContent = "Please wait while we prepare your files...";
+
+            fetch(prepareUrl)
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.ready) throw new Error("Not ready");
+
+                    // CLOSE POPUP IMMEDIATELY
+                    downloadLoading.classList.remove("show");
+
+                    // Trigger browser download
+                    window.location.href = downloadUrl;
+
+                    isDownloading = false;
+                })
+                .catch(err => {
+                    console.error(err);
+                    downloadLoading.classList.remove("show");
+                    isDownloading = false;
+                    alert("❌ Failed to prepare download");
+                });
+        }
+
+        // Single File download overlay (Simpler version)
+        // Single File download overlay
+        function showFileDownloadOverlay(event) {
+            event.preventDefault();
+            const link = event.target.closest('a');
+            if (!link) return;
+
+            const href = link.href;
+
+            downloadLoading.classList.add("show");
+            downloadTitle.textContent = "📄 Downloading File";
+            downloadMessage.textContent = "Starting download...";
+            downloadProgressBar.style.width = "100%";
+            downloadStatus.textContent = "Your download is starting...";
+
+            setTimeout(() => {
+                window.location.href = href;
+                setTimeout(() => downloadLoading.classList.remove("show"), 2000);
+            }, 500);
+        }
+
+        function hideDownloadOverlay() {
+            if (downloadLoading) downloadLoading.classList.remove('show');
+        }
+
+        // Close overlay on click outside
+        if (downloadLoading) {
+            downloadLoading.addEventListener('click', function (e) {
+                if (e.target === this) {
+                    hideDownloadOverlay();
+                }
+            });
+        }
+    </script>
+
+</body>
+
+</html>

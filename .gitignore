@@ -1,0 +1,15 @@
+blast_db/
+gene.service
+.env
+
+# Ignore all content in pipeline_runs
+pipeline_runs/*
+
+# Allow traversing into scripts
+!pipeline_runs/scripts/
+
+# Ignore everything in scripts
+pipeline_runs/scripts/*
+
+# Exception: Keep check_tools.sh
+!pipeline_runs/scripts/check_tools.sh

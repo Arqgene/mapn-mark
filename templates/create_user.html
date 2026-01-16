@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management | MapNMark</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='index_styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .center-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: calc(100vh - 80px);
+            padding: 40px 20px;
+            gap: 40px;
+        }
+
+        .glass-panel {
+            max-width: 1200px;
+            width: 100%;
+            background: rgba(15, 22, 36, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(102, 252, 241, 0.15);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow:
+                0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #66fcf1 0%, #45a29e 100%);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .lab-title {
+            font-size: 2.8em;
+            font-weight: 800;
+            background: linear-gradient(135deg, #66fcf1 0%, #45a29e 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            color: #a0aec0;
+            font-size: 1.1em;
+            margin-top: 10px;
+        }
+
+        /* Modern Card Design */
+        .card {
+            background: rgba(26, 32, 44, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .card-title {
+            font-size: 1.4em;
+            color: #fff;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title i {
+            color: #66fcf1;
+        }
+
+        /* Form Styles */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 16px;
+            color: #66fcf1;
+            pointer-events: none;
+            font-size: 0.9em;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 14px 16px 14px 44px;
+            background: rgba(15, 22, 36, 0.8);
+            border: 1.5px solid rgba(102, 252, 241, 0.15);
+            border-radius: 12px;
+            color: #fff;
+            outline: none;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: #66fcf1;
+            box-shadow: 0 0 0 3px rgba(102, 252, 241, 0.1);
+        }
+
+        label {
+            color: #a0aec0;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+            display: block;
+            font-weight: 500;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #66fcf1 0%, #45a29e 100%);
+            border: none;
+            border-radius: 12px;
+            color: #0f1624;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1em;
+            letter-spacing: 0.5px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 252, 241, 0.2);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Table Styles */
+        .users-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            color: #fff;
+            margin-top: 20px;
+        }
+
+        .users-table th {
+            color: #a0aec0;
+            text-transform: uppercase;
+            font-size: 0.8em;
+            font-weight: 600;
+            padding: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(15, 22, 36, 0.6);
+        }
+
+        .users-table td {
+            padding: 20px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .users-table tr {
+            transition: background-color 0.2s ease;
+        }
+
+        .users-table tr:hover {
+            background: rgba(102, 252, 241, 0.03);
+        }
+
+        /* Role Badges */
+        .role-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .role-user {
+            background: rgba(72, 187, 120, 0.15);
+            color: #48bb78;
+        }
+
+        .role-admin {
+            background: rgba(237, 137, 54, 0.15);
+            color: #ed8936;
+        }
+
+        .role-super-admin {
+            background: rgba(159, 122, 234, 0.15);
+            color: #9f7aea;
+        }
+
+        /* Flash Messages */
+        .flash-message {
+            padding: 16px 24px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .flash-success {
+            background: rgba(72, 187, 120, 0.1);
+            color: #48bb78;
+            border-left: 4px solid #48bb78;
+        }
+
+        .flash-error {
+            background: rgba(245, 101, 101, 0.1);
+            color: #f56565;
+            border-left: 4px solid #f56565;
+        }
+
+        /* Tabs Modern */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 40px;
+            background: rgba(15, 22, 36, 0.8);
+            padding: 6px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #a0aec0;
+            padding: 14px 24px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 500;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .tab-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, rgba(102, 252, 241, 0.1) 0%, rgba(69, 162, 158, 0.1) 100%);
+            color: #66fcf1;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(26, 32, 44, 0.8) 0%, rgba(15, 22, 36, 0.9) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-title {
+            color: #a0aec0;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: 700;
+            color: #66fcf1;
+        }
+
+        .stat-progress {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .stat-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #66fcf1 0%, #45a29e 100%);
+            border-radius: 2px;
+            transition: width 1s ease;
+        }
+
+        /* Action Buttons */
+        .action-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
+            color: #a0aec0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9em;
+        }
+
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-color: rgba(102, 252, 241, 0.3);
+        }
+
+        .danger-btn {
+            color: #f56565;
+            border-color: rgba(245, 101, 101, 0.2);
+            background: rgba(245, 101, 101, 0.05);
+        }
+
+        .danger-btn:hover {
+            background: rgba(245, 101, 101, 0.1);
+            border-color: rgba(245, 101, 101, 0.4);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #a0aec0;
+        }
+
+        .empty-state i {
+            font-size: 3em;
+            margin-bottom: 20px;
+            color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .glass-panel {
+                padding: 25px;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tabs {
+                flex-direction: column;
+            }
+
+            .users-table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    {% include 'components/navbar.html' %}
+
+    <div class="container center-wrapper">
+        <div class="glass-panel">
+            <div class="header">
+                <h1 class="lab-title">User Management</h1>
+                <p id="instNameDisplay" class="subtitle">
+                    <i class="fas fa-shield-alt"></i>
+                    {{ 'Super Administrator Portal' if session.get('role') == 'super_admin' else 'Institution Admin
+                    Portal' }}
+                </p>
+            </div>
+
+            <div id="message" class="flash-message"></div>
+
+            <!-- Seat Usage Stats (Inst Admin Only) -->
+            <div id="seatUsageSection" style="display:none;" class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-title">
+                        <i class="fas fa-users"></i>
+                        <span>User Seats</span>
+                    </div>
+                    <div class="stat-value" id="userSeatsDisplay">Loading...</div>
+                    <div class="stat-progress">
+                        <div class="stat-progress-bar" id="userProgressBar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">
+                        <i class="fas fa-user-shield"></i>
+                        <span>Admin Seats</span>
+                    </div>
+                    <div class="stat-value" id="adminSeatsDisplay">Loading...</div>
+                    <div class="stat-progress">
+                        <div class="stat-progress-bar" id="adminProgressBar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabs (Super Admin Only) -->
+            <div class="tabs" id="adminTabs" style="display:none;">
+                <button class="tab-btn active" onclick="switchTab('users')">
+                    <i class="fas fa-users"></i> Users
+                </button>
+                <button class="tab-btn" onclick="switchTab('institutions')">
+                    <i class="fas fa-university"></i> Institutions
+                </button>
+            </div>
+
+            <!-- TAB: USERS -->
+            <div id="tab-users" class="tab-content active">
+                <!-- Create User Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-user-plus"></i> Create New User
+                        </h3>
+                    </div>
+
+                    <form id="createUserForm" class="form-grid">
+                        <!-- Super Admin: Select Institution -->
+                        <div class="full-width" id="instSelectGroup" style="display:none;">
+                            <label>Institution <span style="color: #f56565;">(Required for User/Admin)</span></label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-building input-icon"></i>
+                                <select id="targetInstitution">
+                                    <option value="">Select Institution...</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label>Full Name</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-user input-icon"></i>
+                                <input type="text" id="name" placeholder="John Doe" required>
+                            </div>
+                        </div>
+                        <div>
+                            <label>Username</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-at input-icon"></i>
+                                <input type="text" id="username" placeholder="johndoe" required>
+                            </div>
+                        </div>
+                        <div>
+                            <label>Email Address</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-envelope input-icon"></i>
+                                <input type="email" id="email" placeholder="john@example.com" required>
+                            </div>
+                        </div>
+                        <div>
+                            <label>Role</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-shield-alt input-icon"></i>
+                                <select id="role">
+                                    <option value="user">User</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="super_admin" id="superAdminOption" style="display:none;">Super Admin
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="full-width">
+                            <label>Password</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-lock input-icon"></i>
+                                <input type="text" id="password" placeholder="Secure password" required>
+                            </div>
+                        </div>
+
+                        <div class="full-width" style="text-align: center;">
+                            <button type="submit" class="submit-btn">
+                                <i class="fas fa-plus-circle"></i> Create User
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Users List Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-list"></i> Existing Users
+                        </h3>
+                        <button onclick="fetchUsers()" class="action-btn">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+
+                    <div style="overflow-x: auto;">
+                        <table class="users-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Username / Email</th>
+                                    <th>Role</th>
+                                    <th id="thInst" style="display:none;">Institution</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: INSTITUTIONS (Super Admin Only) -->
+            <div id="tab-institutions" class="tab-content">
+                <!-- Create Institution Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-plus-circle"></i> Add New Institution
+                        </h3>
+                    </div>
+
+                    <form id="createInstForm" class="form-grid">
+                        <div class="full-width">
+                            <label>Institution Name</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-university input-icon"></i>
+                                <input type="text" id="newInstName" placeholder="University Name" required>
+                            </div>
+                        </div>
+                        <div>
+                            <label>User Limit</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-users input-icon"></i>
+                                <input type="number" id="newUserLimit" value="10" min="1" required>
+                            </div>
+                        </div>
+                        <div>
+                            <label>Admin Limit</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-user-shield input-icon"></i>
+                                <input type="number" id="newAdminLimit" value="1" min="1" required>
+                            </div>
+                        </div>
+                        <div>
+                            <label>License Expiry</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-calendar-alt input-icon"></i>
+                                <input type="date" id="newLicenseExpiry" placeholder="YYYY-MM-DD">
+                            </div>
+                        </div>
+                        <div class="full-width" style="text-align: center;">
+                            <button type="submit" class="submit-btn">
+                                <i class="fas fa-plus-circle"></i> Create Institution
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Institutions List Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-university"></i> All Institutions
+                        </h3>
+                    </div>
+
+                    <div style="overflow-x: auto;">
+                        <table class="users-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>User Limit</th>
+                                    <th>Admin Limit</th>
+                                    <th>License Expiry</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="instTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Store current user role info
+        const currentUserRole = "{{ session.get('role') }}";
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // UI Setup based on Role
+            if (currentUserRole === 'super_admin') {
+                document.getElementById('adminTabs').style.display = 'flex';
+                document.getElementById('instSelectGroup').style.display = 'block';
+                document.getElementById('thInst').style.display = 'table-cell';
+                document.getElementById('superAdminOption').style.display = 'block';
+                fetchInstitutions();
+            } else {
+                document.getElementById('seatUsageSection').style.display = 'grid';
+            }
+
+            // Add event listener for role change
+            document.getElementById('role').addEventListener('change', handleRoleChange);
+
+            document.getElementById('createUserForm').addEventListener('submit', handleCreateUser);
+            document.getElementById('createInstForm').addEventListener('submit', handleCreateInst);
+
+            fetchUsers();
+        });
+
+        function handleRoleChange(e) {
+            const selectedRole = e.target.value;
+            const instSelectGroup = document.getElementById('instSelectGroup');
+            const instSelect = document.getElementById('targetInstitution');
+
+            if (selectedRole === 'super_admin') {
+                // Hide institution field for super admin
+                instSelectGroup.style.display = 'none';
+                instSelect.removeAttribute('required');
+                instSelect.value = ''; // Clear selection
+            } else {
+                // Show and require institution field for user and admin
+                if (currentUserRole === 'super_admin') {
+                    instSelectGroup.style.display = 'block';
+                    instSelect.setAttribute('required', 'required');
+                }
+            }
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function showMessage(msg, type) {
+            const el = document.getElementById('message');
+            el.textContent = msg;
+            el.className = `flash-message ${type}`;
+            el.innerHTML = `
+                <i class="fas fa-${type === 'flash-success' ? 'check-circle' : 'exclamation-circle'}"></i>
+                <span>${msg}</span>
+            `;
+            el.style.display = 'flex';
+            setTimeout(() => el.style.display = 'none', 5000);
+        }
+
+        async function fetchInstitutions() {
+            try {
+                const res = await fetch('/api/institutions');
+                if (!res.ok) return;
+                const insts = await res.json();
+
+                // Populate Dropdown
+                const select = document.getElementById('targetInstitution');
+                select.innerHTML = '<option value="">Select Institution...</option>';
+                insts.forEach(i => {
+                    select.innerHTML += `<option value="${i.id}">${i.name}</option>`;
+                });
+
+                // Populate Table
+                const tbody = document.getElementById('instTableBody');
+                tbody.innerHTML = '';
+                insts.forEach(i => {
+                    const date = i.created_at ? new Date(i.created_at).toLocaleDateString() : 'N/A';
+                    const expiry = i.license_expiry || 'Forever';
+
+                    // Expiry Warning Style
+                    let expiryStyle = '';
+                    if (i.license_expiry) {
+                        const daysLeft = (new Date(i.license_expiry) - new Date()) / (1000 * 60 * 60 * 24);
+                        if (daysLeft < 0) expiryStyle = 'color:#f56565; font-weight:bold;'; // Expired
+                        else if (daysLeft < 30) expiryStyle = 'color:#ed8936;'; // Warning
+                    }
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><code>${i.id}</code></td>
+                            <td><strong>${i.name}</strong></td>
+                            <td>${i.user_limit}</td>
+                            <td>${i.admin_limit}</td>
+                            <td><span style="${expiryStyle}">${expiry}</span></td>
+                            <td><small style="color:#a0aec0;">${date}</small></td>
+                            <td>
+                                <div style="display:flex; gap:10px;">
+                                    <button onclick="renewLicense(${i.id}, '${expiry}')" class="action-btn" style="font-size:0.8em; padding:4px 8px;">
+                                        <i class="fas fa-sync"></i> Renew
+                                    </button>
+                                    <button onclick="deleteInstitution(${i.id}, '${i.name}')" class="action-btn danger-btn" style="font-size:0.8em; padding:4px 8px;">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        async function fetchUsers() {
+            try {
+                const res = await fetch('/api/users');
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+
+                const users = data.users;
+
+                // Update Seat Usage with Progress Bars (Inst Admin)
+                if (data.stats && currentUserRole !== 'super_admin') {
+                    const s = data.stats;
+                    const userPct = Math.min(100, (s.user_count / s.user_limit) * 100);
+                    const adminPct = Math.min(100, (s.admin_count / s.admin_limit) * 100);
+
+                    document.getElementById('userSeatsDisplay').textContent = `${s.user_count} / ${s.user_limit}`;
+                    document.getElementById('adminSeatsDisplay').textContent = `${s.admin_count} / ${s.admin_limit}`;
+                    document.getElementById('userProgressBar').style.width = `${userPct}%`;
+                    document.getElementById('adminProgressBar').style.width = `${adminPct}%`;
+                }
+
+                const tbody = document.getElementById('usersTableBody');
+                tbody.innerHTML = '';
+
+                if (users.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="${currentUserRole === 'super_admin' ? '5' : '4'}" class="empty-state">
+                                <i class="fas fa-users-slash"></i>
+                                <div style="margin-top: 10px;">No users found. Create your first user above.</div>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                users.forEach(u => {
+                    const instName = u.institution_name || '-';
+                    const instCell = currentUserRole === 'super_admin' ?
+                        `<td><small style="color:#a0aec0;">${instName}</small></td>` : '';
+
+                    const roleClass = `role-${u.role.replace('_', '-')}`;
+                    const roleText = u.role.toUpperCase().replace('_', ' ');
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>
+                                <div style="font-weight:500;">${u.name}</div>
+                                <small style="color:#a0aec0; font-size:0.85em;">ID: ${u.id || 'N/A'}</small>
+                            </td>
+                            <td>
+                                <div>${u.username || '-'}</div>
+                                <small style="color:#a0aec0;">${u.email}</small>
+                            </td>
+                            <td><span class="role-badge ${roleClass}">${roleText}</span></td>
+                            ${instCell}
+                            <td>
+                                <button onclick="deleteUser('${u.email}')" class="action-btn danger-btn">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (e) {
+                console.error(e);
+                showMessage('Error loading data', 'flash-error');
+            }
+        }
+
+        async function handleCreateUser(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+
+            const selectedRole = document.getElementById('role').value;
+            const payload = {
+                name: document.getElementById('name').value,
+                username: document.getElementById('username').value,
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value,
+                role: selectedRole
+            };
+
+            // Only add institution_id if NOT creating a super admin
+            if (currentUserRole === 'super_admin') {
+                if (selectedRole !== 'super_admin') {
+                    // For user and admin roles, institution is required
+                    const instId = document.getElementById('targetInstitution').value;
+                    if (!instId) {
+                        showMessage('Please select an institution for this user', 'flash-error');
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+                        return;
+                    }
+                    payload.institution_id = instId;
+                }
+                // If selectedRole is 'super_admin', don't add institution_id
+            }
+
+            try {
+                const res = await fetch('/api/create-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+
+                if (res.ok) {
+                    showMessage('User created successfully!', 'flash-success');
+                    e.target.reset();
+                    fetchUsers();
+                } else {
+                    showMessage(result.error || 'Failed to create user', 'flash-error');
+                }
+            } catch (err) {
+                showMessage('Network error', 'flash-error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        async function handleCreateInst(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+
+            try {
+                const res = await fetch('/api/create-institution', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: document.getElementById('newInstName').value,
+                        user_limit: document.getElementById('newUserLimit').value,
+                        admin_limit: document.getElementById('newAdminLimit').value,
+                        license_expiry: document.getElementById('newLicenseExpiry').value
+                    })
+                });
+
+                const result = await res.json();
+
+                if (res.ok) {
+                    showMessage('Institution created successfully!', 'flash-success');
+                    e.target.reset();
+                    fetchInstitutions();
+                } else {
+                    showMessage(result.error || 'Failed to create institution', 'flash-error');
+                }
+            } catch (err) {
+                console.error(err);
+                showMessage('Network error', 'flash-error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        async function deleteUser(email) {
+            if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
+
+            try {
+                const res = await fetch('/api/delete-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+
+                if (res.ok) {
+                    showMessage('User deleted successfully', 'flash-success');
+                    fetchUsers();
+                } else {
+                    const error = await res.json();
+                    showMessage(error.error || 'Failed to delete user', 'flash-error');
+                }
+            } catch (e) {
+                showMessage('Network error', 'flash-error');
+            }
+        }
+
+        async function renewLicense(instId, currentExpiry) {
+            const newDate = prompt("Enter new license expiry date (YYYY-MM-DD):", currentExpiry === 'Forever' ? new Date().toISOString().split('T')[0] : currentExpiry);
+            if (!newDate) return;
+
+            try {
+                const res = await fetch('/api/renew-license', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ institution_id: instId, new_expiry: newDate })
+                });
+
+                if (res.ok) {
+                    showMessage('License renewed successfully', 'flash-success');
+                    fetchInstitutions();
+                } else {
+                    const err = await res.json();
+                    showMessage(err.error || 'Failed to renew', 'flash-error');
+                }
+            } catch (e) {
+                showMessage('Network error', 'flash-error');
+            }
+        }
+
+        async function deleteInstitution(instId, instName) {
+            if (!confirm(`Are you sure you want to delete "${instName}"? \n\nExisting users will NOT be deleted, but will be removed from this institution.`)) return;
+
+            try {
+                const res = await fetch('/api/delete-institution', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ institution_id: instId })
+                });
+
+                if (res.ok) {
+                    showMessage('Institution deleted', 'flash-success');
+                    fetchInstitutions();
+                    fetchUsers(); // Refresh user list to show updated (null) insts
+                } else {
+                    const err = await res.json();
+                    showMessage(err.error || 'Failed to delete', 'flash-error');
+                }
+            } catch (e) {
+                showMessage('Network error', 'flash-error');
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,9 @@
+Flask
+Flask-Session
+python-dotenv
+requests
+waitress
+openai
+mysql-connector-python
+psutil
+

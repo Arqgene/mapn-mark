@@ -1,0 +1,1647 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BioPipeline Diagnostics | Genomic System Status</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='index_styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Main container and centering */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .dashboard-wrapper {
+            display: flex;
+            flex-direction: column;
+            min-height: calc(100vh - 80px);
+            gap: 30px;
+        }
+
+        /* Header styling */
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 30px 0;
+            position: relative;
+        }
+
+        .lab-title {
+            font-size: 2.8em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #66fcf1 0%, #45a29e 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+            letter-spacing: 1px;
+            text-shadow: 0 0 30px rgba(102, 252, 241, 0.3);
+        }
+
+        .lab-subtitle {
+            color: #a0aec0;
+            font-size: 1.1em;
+            font-weight: 400;
+            letter-spacing: 0.5px;
+        }
+
+        /* Dashboard Grid */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 30px;
+            flex: 1;
+        }
+
+        @media (max-width: 1200px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Main Panel - matches create user styling */
+        .main-panel {
+            background: rgba(15, 22, 36, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(102, 252, 241, 0.25);
+            border-radius: 20px;
+            padding: 35px;
+            box-shadow:
+                0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(102, 252, 241, 0.1),
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .main-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg,
+                    #66fcf1 0%,
+                    #45a29e 50%,
+                    #66fcf1 100%);
+            border-radius: 20px 20px 0 0;
+        }
+
+        .panel-title {
+            font-size: 1.4em;
+            font-weight: 600;
+            color: #66fcf1;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(102, 252, 241, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel-title i {
+            font-size: 1.2em;
+        }
+
+        /* Action Grid */
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 25px;
+            margin-bottom: 35px;
+        }
+
+        @media (max-width: 768px) {
+            .action-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Action Cards - Enhanced */
+        .action-card {
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+            border-radius: 16px;
+            padding: 30px;
+            border: 1px solid rgba(102, 252, 241, 0.15);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .action-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(102, 252, 241, 0.1), transparent);
+            transition: left 0.7s ease;
+        }
+
+        .action-card:hover {
+            transform: translateY(-5px);
+            border-color: #66fcf1;
+            box-shadow: 0 15px 40px rgba(102, 252, 241, 0.25);
+        }
+
+        .action-card:hover::before {
+            left: 100%;
+        }
+
+        .action-icon {
+            font-size: 2.8rem;
+            margin-bottom: 1.5rem;
+            display: inline-block;
+            background: linear-gradient(135deg, #66fcf1, #45a29e);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .action-title {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #66fcf1;
+        }
+
+        .action-desc {
+            color: #94a3b8;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Warning Note */
+        .warning-note {
+            background: rgba(255, 165, 2, 0.1);
+            border: 1px solid rgba(255, 165, 2, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .warning-note i {
+            color: #ffa502;
+            font-size: 1rem;
+            margin-top: 0.1rem;
+        }
+
+        .warning-text {
+            color: #ffcc8a;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .warning-text strong {
+            color: #ffa502;
+            font-weight: 600;
+        }
+
+        /* Action Buttons */
+        .action-btn {
+            background: linear-gradient(135deg, rgba(102, 252, 241, 0.1), rgba(69, 162, 158, 0.1));
+            border: 2px solid #66fcf1;
+            color: #66fcf1;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .action-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(102, 252, 241, 0.2), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .action-btn:hover:not(:disabled) {
+            background: linear-gradient(135deg, rgba(102, 252, 241, 0.2), rgba(69, 162, 158, 0.2));
+            box-shadow: 0 0 35px rgba(102, 252, 241, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .action-btn:hover::before {
+            left: 100%;
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .action-btn:disabled:hover::before {
+            left: -100%;
+        }
+
+        /* Test button specific styling */
+        .action-btn.test-btn {
+            background: linear-gradient(135deg, rgba(0, 255, 157, 0.1), rgba(0, 204, 136, 0.1));
+            border-color: #00ff9d;
+            color: #00ff9d;
+        }
+
+        .action-btn.test-btn:hover:not(:disabled) {
+            background: linear-gradient(135deg, rgba(0, 255, 157, 0.2), rgba(0, 204, 136, 0.2));
+            box-shadow: 0 0 35px rgba(0, 255, 157, 0.3);
+        }
+
+        /* Results Section */
+        .results-section {
+            background: rgba(15, 23, 42, 0.7);
+            border-radius: 16px;
+            padding: 25px;
+            border: 1px solid rgba(102, 252, 241, 0.1);
+            min-height: 500px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(102, 252, 241, 0.1);
+        }
+
+        .tools-count {
+            background: rgba(102, 252, 241, 0.1);
+            padding: 0.6rem 1.2rem;
+            border-radius: 20px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #66fcf1;
+            border: 1px solid rgba(102, 252, 241, 0.3);
+            white-space: nowrap;
+        }
+
+        /* Category Filters */
+        .category-filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            background: rgba(102, 252, 241, 0.1);
+            border: 1px solid rgba(102, 252, 241, 0.3);
+            color: #66fcf1;
+            padding: 0.6rem 1.2rem;
+            border-radius: 20px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 500;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn:hover {
+            background: rgba(102, 252, 241, 0.2);
+            border-color: #66fcf1;
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, #66fcf1, #45a29e);
+            color: #0f1624;
+            border-color: transparent;
+        }
+
+        /* Tools Grid */
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .tools-grid::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .tools-grid::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 3px;
+        }
+
+        .tools-grid::-webkit-scrollbar-thumb {
+            background: rgba(102, 252, 241, 0.3);
+            border-radius: 3px;
+        }
+
+        /* Tool Cards */
+        .tool-card {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 4px solid #555;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-height: 130px;
+        }
+
+        .tool-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #66fcf1, transparent);
+        }
+
+        .tool-card.installed {
+            border-left-color: #00ff9d;
+            box-shadow: 0 5px 25px rgba(0, 255, 157, 0.15);
+        }
+
+        .tool-card.missing {
+            border-left-color: #ff4757;
+            box-shadow: 0 5px 25px rgba(255, 71, 87, 0.15);
+        }
+
+        .tool-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(102, 252, 241, 0.25);
+        }
+
+        .tool-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .tool-name {
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .tool-name i {
+            font-size: 0.9rem;
+            color: #66fcf1;
+        }
+
+        .tool-badge {
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-installed {
+            background: rgba(0, 255, 157, 0.15);
+            color: #00ff9d;
+            border: 1px solid rgba(0, 255, 157, 0.3);
+        }
+
+        .badge-missing {
+            background: rgba(255, 71, 87, 0.15);
+            color: #ff4757;
+            border: 1px solid rgba(255, 71, 87, 0.3);
+        }
+
+        .tool-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .tool-version {
+            font-family: 'Courier New', monospace;
+            color: #66fcf1;
+            background: rgba(102, 252, 241, 0.1);
+            padding: 0.3rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            border: 1px solid rgba(102, 252, 241, 0.2);
+        }
+
+        .tool-category {
+            font-size: 0.8rem;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1.5rem;
+            opacity: 0.5;
+            color: #66fcf1;
+        }
+
+        .empty-state h3 {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.5rem;
+            margin-bottom: 0.75rem;
+            color: #cbd5e1;
+        }
+
+        .empty-state p {
+            max-width: 400px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        /* Status Card */
+        .status-card {
+            background: rgba(15, 22, 36, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(102, 252, 241, 0.25);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow:
+                0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(102, 252, 241, 0.1),
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .status-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg,
+                    #66fcf1 0%,
+                    #45a29e 50%,
+                    #66fcf1 100%);
+            border-radius: 20px 20px 0 0;
+        }
+
+        .status-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .status-icon {
+            font-size: 1.5rem;
+            color: #66fcf1;
+            background: rgba(102, 252, 241, 0.1);
+            padding: 12px;
+            border-radius: 12px;
+        }
+
+        .status-header h3 {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #66fcf1;
+            margin: 0;
+        }
+
+        .status-header .subtitle {
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+
+        /* Score Display */
+        .score-display {
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .progress-ring {
+            margin: 0 auto 20px;
+            width: 180px;
+            height: 180px;
+            position: relative;
+        }
+
+        .circle-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-width: 10;
+        }
+
+        .circle-progress {
+            fill: none;
+            stroke: url(#gradient);
+            stroke-width: 10;
+            stroke-linecap: round;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+            transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .score-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin: 10px 0;
+            background: linear-gradient(135deg, #66fcf1, #45a29e);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 30px rgba(102, 252, 241, 0.3);
+        }
+
+        .score-label {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 500;
+        }
+
+        /* Log Terminal */
+        .log-terminal {
+            background: rgba(15, 23, 42, 0.9);
+            border-radius: 12px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: #00ff9d;
+            height: 280px;
+            overflow-y: auto;
+            border: 1px solid rgba(102, 252, 241, 0.1);
+        }
+
+        .log-terminal::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .log-terminal::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 3px;
+        }
+
+        .log-terminal::-webkit-scrollbar-thumb {
+            background: rgba(0, 255, 157, 0.3);
+            border-radius: 3px;
+        }
+
+        .log-line {
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+            animation: fadeIn 0.3s ease;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 14, 23, 0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            backdrop-filter: blur(10px);
+        }
+
+        .dna-loader {
+            width: 120px;
+            height: 120px;
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        .dna-strand-loader {
+            position: absolute;
+            width: 3px;
+            height: 100%;
+            background: linear-gradient(to bottom, transparent, #66fcf1, transparent);
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0.5;
+        }
+
+        .dna-node {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: #66fcf1;
+            border-radius: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: dnaFloat 2s ease-in-out infinite;
+            box-shadow: 0 0 20px rgba(102, 252, 241, 0.5);
+        }
+
+        .dna-node:nth-child(2) {
+            top: 10%;
+            animation-delay: 0.1s;
+        }
+
+        .dna-node:nth-child(3) {
+            top: 30%;
+            animation-delay: 0.2s;
+        }
+
+        .dna-node:nth-child(4) {
+            top: 50%;
+            animation-delay: 0.3s;
+        }
+
+        .dna-node:nth-child(5) {
+            top: 70%;
+            animation-delay: 0.4s;
+        }
+
+        .dna-node:nth-child(6) {
+            top: 90%;
+            animation-delay: 0.5s;
+        }
+
+        @keyframes dnaFloat {
+
+            0%,
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+
+            50% {
+                transform: translate(-50%, -50%) scale(1.3);
+            }
+        }
+
+        .loading-text {
+            font-family: 'Orbitron', sans-serif;
+            color: #66fcf1;
+            font-size: 1.3rem;
+            font-weight: 500;
+            text-align: center;
+            letter-spacing: 1px;
+            animation: pulseText 2s ease-in-out infinite;
+        }
+
+        @keyframes pulseText {
+
+            0%,
+            100% {
+                opacity: 0.7;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 14, 23, 0.95);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+            backdrop-filter: blur(10px);
+            padding: 20px;
+        }
+
+        .modal {
+            background: rgba(15, 22, 36, 0.98);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            border: 1px solid rgba(255, 165, 2, 0.3);
+            box-shadow: 0 25px 60px rgba(255, 165, 2, 0.25);
+            position: relative;
+        }
+
+        .modal::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #ffa502, #ff7b00);
+            border-radius: 20px 20px 0 0;
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .modal-icon {
+            font-size: 2.5rem;
+            color: #ffa502;
+        }
+
+        .modal-title {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.4rem;
+            color: #ffa502;
+            font-weight: 600;
+        }
+
+        .modal-content {
+            color: #cbd5e1;
+            line-height: 1.6;
+            margin: 20px 0;
+        }
+
+        .modal-warning {
+            background: rgba(255, 165, 2, 0.1);
+            border: 1px solid rgba(255, 165, 2, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            font-size: 0.95rem;
+        }
+
+        .modal-btn-cancel {
+            background: rgba(255, 255, 255, 0.1);
+            color: #94a3b8;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-btn-cancel:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-btn-confirm {
+            background: linear-gradient(135deg, #ffa502, #ff7b00);
+            color: white;
+        }
+
+        .modal-btn-confirm:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(255, 165, 2, 0.3);
+        }
+
+        /* Notifications */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            z-index: 4000;
+            animation: slideIn 0.3s ease, slideOut 0.3s ease 2.7s forwards;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            max-width: 350px;
+            backdrop-filter: blur(10px);
+            border: 1px solid;
+        }
+
+        .notification.success {
+            background: rgba(0, 255, 157, 0.15);
+            border-color: #00ff9d;
+            color: #00ff9d;
+        }
+
+        .notification.error {
+            background: rgba(255, 71, 87, 0.15);
+            border-color: #ff4757;
+            color: #ff4757;
+        }
+
+        .notification.warning {
+            background: rgba(255, 165, 2, 0.15);
+            border-color: #ffa502;
+            color: #ffa502;
+        }
+
+        .notification.info {
+            background: rgba(102, 252, 241, 0.15);
+            border-color: #66fcf1;
+            color: #66fcf1;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .lab-title {
+                font-size: 2.2em;
+            }
+
+            .main-panel,
+            .status-card {
+                padding: 20px;
+            }
+
+            .action-grid {
+                gap: 20px;
+            }
+
+            .tools-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .section-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+
+            .modal-actions {
+                flex-direction: column;
+            }
+
+            .modal-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    {% include 'components/navbar.html' %}
+
+    <!-- DNA Background (same as create user page) -->
+    <div class="dna-background">
+        <div class="dna-strand"></div>
+        <div class="dna-strand"></div>
+        <div class="dna-strand"></div>
+        <div class="dna-strand"></div>
+        <div class="dna-strand"></div>
+    </div>
+
+    <div class="container">
+        <div class="dashboard-wrapper">
+            <!-- Header -->
+            <div class="header">
+                <h1 class="lab-title">System Diagnostics</h1>
+                <p class="lab-subtitle">Real-time Pipeline Status & Health Check</p>
+            </div>
+
+            <!-- Dashboard -->
+            <div class="dashboard">
+                <!-- Main Panel -->
+                <main class="main-panel">
+                    <div class="panel-title">
+                        <i class="fas fa-microscope"></i>
+                        System Diagnostics
+                    </div>
+
+                    <!-- Action Cards -->
+                    <div class="action-grid" id="actionGrid">
+                        <div class="action-card">
+                            <div class="action-icon">
+                                <i class="fas fa-search"></i>
+                            </div>
+                            <div class="action-title">Full System Scan</div>
+                            <div class="action-desc">
+                                Comprehensive analysis of all bioinformatics tools, dependencies, and system
+                                configurations
+                            </div>
+                            <button id="scanBtn" class="action-btn" onclick="startBenchmark()">
+                                <i class="fas fa-play"></i> Initialize Scan
+                            </button>
+                        </div>
+
+                        <div class="action-card">
+                            <div class="action-icon">
+                                <i class="fas fa-vial"></i>
+                            </div>
+                            <div class="action-title">Pipeline Validation Test</div>
+                            <div class="action-desc">
+                                Execute a full workflow with test data to validate pipeline integrity
+                            </div>
+
+                            <!-- Warning Note -->
+                            <div class="warning-note">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <div class="warning-text">
+                                    <strong>Time Warning:</strong> This process may take 30-40 minutes to complete.
+                                    Ensure
+                                    you have sufficient time before starting.
+                                </div>
+                            </div>
+
+                            <button id="testBtn" class="action-btn test-btn" onclick="showValidationWarning()">
+                                <i class="fas fa-flask"></i> Run Validation
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Results Section -->
+                    <div id="resultsSection" class="results-section" style="display: none;">
+                        <div class="section-header">
+                            <div class="panel-title">
+                                <i class="fas fa-tools"></i>
+                                Tool Inventory Status
+                            </div>
+                            <div id="toolsCount" class="tools-count">0/0 Tools Installed</div>
+                        </div>
+
+                        <!-- Category Filters -->
+                        <div class="category-filters" id="categoryFilters">
+                            <button class="filter-btn active" data-category="all">All Tools</button>
+                            <button class="filter-btn" data-category="installed">Installed</button>
+                            <button class="filter-btn" data-category="missing">Missing</button>
+                            <button class="filter-btn" data-category="alignment">Alignment</button>
+                            <button class="filter-btn" data-category="qc">Quality Control</button>
+                            <button class="filter-btn" data-category="assembly">Assembly</button>
+                            <button class="filter-btn" data-category="annotation">Annotation</button>
+                        </div>
+
+                        <!-- Tools Grid -->
+                        <div class="tools-grid" id="toolsGrid">
+                            <!-- Tool cards will be inserted here -->
+                        </div>
+
+                        <!-- Empty State -->
+                        <div id="emptyState" class="empty-state" style="display: none;">
+                            <i class="fas fa-search"></i>
+                            <h3>No Tools Found</h3>
+                            <p>Run a system scan to detect installed bioinformatics tools and dependencies.</p>
+                        </div>
+                    </div>
+                </main>
+
+                <!-- Sidebar -->
+                <aside class="sidebar">
+                    <!-- Health Score Card -->
+                    <div class="status-card">
+                        <div class="status-header">
+                            <div class="status-icon">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div>
+                                <h3>System Health Score</h3>
+                                <div class="subtitle">Overall Pipeline Readiness</div>
+                            </div>
+                        </div>
+
+                        <div class="score-display">
+                            <div class="progress-ring">
+                                <svg viewBox="0 0 100 100">
+                                    <defs>
+                                        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" stop-color="#66fcf1" />
+                                            <stop offset="100%" stop-color="#45a29e" />
+                                        </linearGradient>
+                                    </defs>
+                                    <circle class="circle-bg" cx="50" cy="50" r="45" />
+                                    <circle class="circle-progress" cx="50" cy="50" r="45" stroke-dasharray="283"
+                                        stroke-dashoffset="283" />
+                                </svg>
+                            </div>
+                            <div class="score-value" id="finalScore">0%</div>
+                            <div class="score-label">System Integrity</div>
+                        </div>
+                    </div>
+
+                    <!-- Diagnostic Log Card -->
+                    <div class="status-card">
+                        <div class="status-header">
+                            <div class="status-icon">
+                                <i class="fas fa-terminal"></i>
+                            </div>
+                            <div>
+                                <h3>Diagnostic Log</h3>
+                                <div class="subtitle">Real-time System Messages</div>
+                            </div>
+                        </div>
+                        <div class="log-terminal" id="termLog">
+                            <div class="log-line">> System ready for diagnostics...</div>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="dna-loader">
+            <div class="dna-strand-loader"></div>
+            <div class="dna-node"></div>
+            <div class="dna-node"></div>
+            <div class="dna-node"></div>
+            <div class="dna-node"></div>
+            <div class="dna-node"></div>
+        </div>
+        <div class="loading-text" id="loadingText">Initializing System Scan...</div>
+    </div>
+
+    <!-- Warning Modal -->
+    <div id="warningModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="modal-title">Extended Processing Time Required</div>
+            </div>
+
+            <div class="modal-content">
+                <p>You are about to start a comprehensive pipeline validation test. This process will:</p>
+
+                <div class="modal-warning">
+                    <i class="fas fa-clock"></i>
+                    <strong>Take approximately 30-40 minutes</strong> to complete the full genomic analysis workflow.
+                </div>
+
+                <p>During this time:</p>
+                <ul style="padding-left: 1.5rem; margin: 1rem 0; line-height: 1.6;">
+                    <li>The system will process test genomic data</li>
+                    <li>Multiple bioinformatics tools will be executed sequentially</li>
+                    <li>Results will be validated against expected outcomes</li>
+                    <li>You can monitor progress in the diagnostic log</li>
+                </ul>
+
+                <p><strong>Do not close this window</strong> during the validation process.</p>
+            </div>
+
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-cancel" onclick="hideValidationWarning()">
+                    Cancel
+                </button>
+                <button class="modal-btn modal-btn-confirm" onclick="confirmValidationTest()">
+                    <i class="fas fa-play"></i> Start Validation
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const scanBtn = document.getElementById('scanBtn');
+        const testBtn = document.getElementById('testBtn');
+        const actionGrid = document.getElementById('actionGrid');
+        const resultsSection = document.getElementById('resultsSection');
+        const toolsGrid = document.getElementById('toolsGrid');
+        const emptyState = document.getElementById('emptyState');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loadingText');
+        const termLog = document.getElementById('termLog');
+        const finalScore = document.getElementById('finalScore');
+        const toolsCount = document.getElementById('toolsCount');
+        const progressCircle = document.querySelector('.circle-progress');
+        const warningModal = document.getElementById('warningModal');
+        const categoryFilters = document.querySelectorAll('.filter-btn');
+
+        // Tool data storage
+        let allTools = [];
+        let filteredTools = [];
+
+        // Diagnostic logs
+        const diagnosticLogs = [
+            "Initializing diagnostic protocols...",
+            "Checking Conda environments...",
+            "Verifying FASTQ processing tools...",
+            "Validating alignment software (BWA/SAMtools)...",
+            "Testing variant calling pipelines...",
+            "Checking database connections...",
+            "Verifying QC tools (FastQC, MultiQC)...",
+            "Testing visualization dependencies...",
+            "Validating pipeline orchestration...",
+            "Finalizing system assessment..."
+        ];
+
+        // Add log message
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+
+            const logLine = document.createElement('div');
+            logLine.className = 'log-line';
+
+            let color = '#00ff9d'; // Success
+            if (type === 'error') color = '#ff4757';
+            if (type === 'warning') color = '#ffa502';
+            if (type === 'info') color = '#66fcf1';
+
+            logLine.innerHTML = `<span style="color: #64748b">[${timestamp}]</span> <span style="color: ${color}">${message}</span>`;
+
+            termLog.appendChild(logLine);
+            termLog.scrollTop = termLog.scrollHeight;
+
+            if (termLog.children.length > 50) {
+                termLog.removeChild(termLog.firstChild);
+            }
+        }
+
+        // Update progress ring AND percentage display
+        function updateProgress(percentage) {
+            const offset = 283 - (283 * percentage / 100);
+            progressCircle.style.strokeDashoffset = offset;
+
+            const displayPercentage = Math.min(Math.max(Math.round(percentage), 0), 100);
+            finalScore.textContent = `${displayPercentage}%`;
+
+            // Force browser to re-render
+            void finalScore.offsetWidth;
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
+                ${message}
+            `;
+
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 3000);
+        }
+
+        // Show validation warning modal
+        function showValidationWarning() {
+            warningModal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Hide validation warning modal
+        function hideValidationWarning() {
+            warningModal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        // Confirm validation test
+        function confirmValidationTest() {
+            hideValidationWarning();
+            startTestRun();
+        }
+
+        // Get category for a tool
+        function getToolCategory(toolName) {
+            const categories = {
+                'alignment': ['minimap2', 'bwa', 'bowtie2', 'hisat2', 'star'],
+                'qc': ['fastqc', 'multiqc', 'trimmomatic', 'cutadapt', 'fastp'],
+                'assembly': ['flye', 'spades', 'canu', 'mecat', 'wtdbg2'],
+                'annotation': ['prokka', 'bakta', 'eggnog', 'interproscan', 'blast'],
+                'processing': ['porechop', 'filtlong', 'seqtk', 'samtools', 'bcftools'],
+                'polishing': ['racon', 'medaka', 'pilon', 'nextpolish'],
+                'visualization': ['igv', 'jbrowse', 'ucsc', 'circos']
+            };
+
+            const lowerName = toolName.toLowerCase();
+            for (const [category, tools] of Object.entries(categories)) {
+                if (tools.some(tool => lowerName.includes(tool))) {
+                    return category;
+                }
+            }
+            return 'other';
+        }
+
+        // Create tool card
+        function createToolCard(tool) {
+            const isInstalled = tool.installed === true || tool.status === 'installed' || tool.status === 'online';
+            const category = getToolCategory(tool.name);
+
+            const card = document.createElement('div');
+            card.className = `tool-card ${isInstalled ? 'installed' : 'missing'}`;
+            card.dataset.category = category;
+            card.dataset.installed = isInstalled;
+
+            // Get appropriate icon
+            const getToolIcon = (toolName) => {
+                const toolIcons = {
+                    'fastqc': 'fas fa-chart-bar',
+                    'multiqc': 'fas fa-chart-pie',
+                    'minimap2': 'fas fa-map-marked-alt',
+                    'bwa': 'fas fa-map-marked-alt',
+                    'flye': 'fas fa-dna',
+                    'spades': 'fas fa-dna',
+                    'samtools': 'fas fa-tools',
+                    'prokka': 'fas fa-tag',
+                    'blast': 'fas fa-search',
+                    'racon': 'fas fa-magic',
+                    'medaka': 'fas fa-magic',
+                    'porechop': 'fas fa-cut'
+                };
+
+                const lowerName = toolName.toLowerCase();
+                for (const [key, icon] of Object.entries(toolIcons)) {
+                    if (lowerName.includes(key)) return icon;
+                }
+                return 'fas fa-cog';
+            };
+
+            card.innerHTML = `
+                <div class="tool-header">
+                    <div class="tool-name">
+                        <i class="${getToolIcon(tool.name)}"></i>
+                        <span>${tool.name || 'Unknown Tool'}</span>
+                    </div>
+                    <div class="tool-badge ${isInstalled ? 'badge-installed' : 'badge-missing'}">
+                        <i class="fas fa-${isInstalled ? 'check' : 'times'}"></i>
+                        ${isInstalled ? 'Installed' : 'Missing'}
+                    </div>
+                </div>
+                <div class="tool-details">
+                    <span class="tool-category">${category.toUpperCase()}</span>
+                </div>
+            `;
+
+            return card;
+        }
+
+        // Filter tools by category
+        function filterTools(category) {
+            if (category === 'all') {
+                filteredTools = [...allTools];
+            } else if (category === 'installed') {
+                filteredTools = allTools.filter(tool =>
+                    tool.installed === true || tool.status === 'installed' || tool.status === 'online'
+                );
+            } else if (category === 'missing') {
+                filteredTools = allTools.filter(tool =>
+                    !(tool.installed === true || tool.status === 'installed' || tool.status === 'online')
+                );
+            } else {
+                filteredTools = allTools.filter(tool =>
+                    getToolCategory(tool.name) === category
+                );
+            }
+
+            renderTools();
+        }
+
+        // Render tools to the grid
+        function renderTools() {
+            toolsGrid.innerHTML = '';
+
+            if (filteredTools.length === 0) {
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+
+            const fragment = document.createDocumentFragment();
+            filteredTools.forEach((tool, index) => {
+                const card = createToolCard(tool);
+                card.style.animationDelay = `${index * 0.05}s`;
+                fragment.appendChild(card);
+            });
+
+            toolsGrid.appendChild(fragment);
+        }
+
+        // Start benchmark
+        async function startBenchmark() {
+            scanBtn.disabled = true;
+            scanBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+
+            loadingOverlay.style.display = 'flex';
+            actionGrid.style.opacity = '0.5';
+            actionGrid.style.pointerEvents = 'none';
+
+            // Clear previous results
+            toolsGrid.innerHTML = '';
+            termLog.innerHTML = '<div class="log-line">> Starting system diagnostics...</div>';
+
+            // Reset score to 0% immediately
+            updateProgress(0);
+
+            let logIndex = 0;
+            const logInterval = setInterval(() => {
+                if (logIndex < diagnosticLogs.length) {
+                    addLog(diagnosticLogs[logIndex], 'info');
+                    loadingText.textContent = diagnosticLogs[logIndex];
+                    logIndex++;
+                }
+            }, 700);
+
+            try {
+                const response = await fetch("{{ url_for('run_diagnostics') }}");
+                const data = await response.json();
+
+                clearInterval(logInterval);
+                loadingOverlay.style.display = 'none';
+                actionGrid.style.opacity = '1';
+                actionGrid.style.pointerEvents = 'auto';
+                resultsSection.style.display = 'block';
+                scanBtn.disabled = false;
+                scanBtn.innerHTML = '<i class="fas fa-redo"></i> Rescan System';
+
+                if (data.error) {
+                    addLog(`ERROR: ${data.error}`, 'error');
+                    showNotification(`Scan failed: ${data.error}`, 'error');
+                    updateProgress(0);
+                    return;
+                }
+
+                // Scroll to results
+                resultsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                // Store and display tools
+                allTools = data.tools || [];
+                filteredTools = [...allTools];
+
+                // Update counts
+                const installedCount = allTools.filter(tool =>
+                    tool.installed === true || tool.status === 'installed' || tool.status === 'online'
+                ).length;
+                toolsCount.textContent = `${installedCount}/${allTools.length} Tools`;
+
+                renderTools();
+                updateScore(allTools);
+
+                showNotification('System scan completed successfully!', 'success');
+
+            } catch (error) {
+                clearInterval(logInterval);
+                addLog(`Network Error: ${error.message}`, 'error');
+                showNotification(`Network error: ${error.message}`, 'error');
+                loadingOverlay.style.display = 'none';
+                actionGrid.style.opacity = '1';
+                actionGrid.style.pointerEvents = 'auto';
+                scanBtn.disabled = false;
+                scanBtn.innerHTML = '<i class="fas fa-play"></i> Initialize Scan';
+                updateProgress(0);
+            }
+        }
+
+        // Update score with smooth animation
+        function updateScore(tools) {
+            if (!tools || tools.length === 0) {
+                updateProgress(0);
+                return;
+            }
+
+            const installed = tools.filter(t =>
+                t.installed === true || t.status === 'installed' || t.status === 'online'
+            ).length;
+            const percentage = (installed / tools.length) * 100;
+
+            let current = 0;
+            const interval = setInterval(() => {
+                if (current >= percentage) {
+                    clearInterval(interval);
+                    addLog(`System scan complete: ${Math.round(percentage)}% integrity score`, 'success');
+                } else {
+                    current += 1;
+                    updateProgress(current);
+                }
+            }, 20);
+        }
+
+        // Start test run with time estimation
+        async function startTestRun() {
+            testBtn.disabled = true;
+            testBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing...';
+
+            addLog('Starting pipeline validation test...', 'info');
+            addLog('Warning: This process may take 30-40 minutes to complete.', 'warning');
+            showNotification('Starting pipeline validation test...', 'info');
+
+            loadingOverlay.style.display = 'flex';
+            loadingText.textContent = 'Initializing pipeline validation...';
+
+            try {
+                const response = await fetch("{{ url_for('run_test_pipeline_route') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const data = await response.json();
+                loadingOverlay.style.display = 'none';
+
+                if (data.error) {
+                    addLog(`Validation failed: ${data.error}`, 'error');
+                    showNotification(`Validation failed: ${data.error}`, 'error');
+                    testBtn.disabled = false;
+                    testBtn.innerHTML = '<i class="fas fa-flask"></i> Run Validation';
+                    return;
+                }
+
+                addLog(`Test pipeline started with ID: ${data.run_id}`, 'info');
+                addLog('Estimated completion time: 30-40 minutes', 'warning');
+                showNotification('Pipeline test started successfully. Monitoring progress...', 'info');
+
+                monitorTestRun(data.run_id);
+
+            } catch (error) {
+                loadingOverlay.style.display = 'none';
+                addLog(`Test initialization failed: ${error.message}`, 'error');
+                showNotification(`Test failed: ${error.message}`, 'error');
+                testBtn.disabled = false;
+                testBtn.innerHTML = '<i class="fas fa-flask"></i> Run Validation';
+            }
+        }
+
+        // Monitor test run
+        async function monitorTestRun(runId) {
+            let startTime = Date.now();
+            let checkCount = 0;
+
+            testBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running...';
+
+            const statusInterval = setInterval(async () => {
+                try {
+                    checkCount++;
+                    const elapsedTime = Date.now() - startTime;
+                    const elapsedMinutes = Math.floor(elapsedTime / 60000);
+
+                    const response = await fetch(`/api/diagnostics/status/${runId}`);
+                    const data = await response.json();
+
+                    addLog(`Pipeline status: ${data.status} (${elapsedMinutes}m elapsed)`, 'info');
+
+                    if (data.status === 'success') {
+                        clearInterval(statusInterval);
+                        addLog('✅ Pipeline validation successful!', 'success');
+                        addLog(`Total time: ${elapsedMinutes} minutes`, 'info');
+                        showNotification(`Pipeline validation passed in ${elapsedMinutes} minutes!`, 'success');
+                        testBtn.innerHTML = '<i class="fas fa-check"></i> Validation Passed';
+
+                        setTimeout(() => {
+                            testBtn.disabled = false;
+                            testBtn.innerHTML = '<i class="fas fa-flask"></i> Run Validation';
+                        }, 5000);
+
+                    } else if (data.status === 'failed' || data.status === 'cancelled') {
+                        clearInterval(statusInterval);
+                        addLog('❌ Pipeline validation failed', 'error');
+                        showNotification('Pipeline validation failed', 'error');
+                        testBtn.disabled = false;
+                        testBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Retry Validation';
+                    } else if (data.status === 'running') {
+                        if (checkCount % 5 === 0) {
+                            addLog(`Validation in progress... (${elapsedMinutes}m elapsed)`, 'info');
+                        }
+                        testBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Running (${elapsedMinutes}m)...`;
+                    }
+
+                } catch (error) {
+                    addLog(`Status check error: ${error.message}`, 'error');
+                }
+            }, 30000);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            addLog('BioPipeline Diagnostics System Initialized v2.1', 'info');
+            addLog('Ready for system scan and pipeline validation', 'info');
+
+            // Initialize with 0% score
+            updateProgress(0);
+
+            // Setup category filter buttons
+            categoryFilters.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    categoryFilters.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    filterTools(btn.dataset.category);
+                });
+            });
+        });
+
+        // Close modal on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && warningModal.style.display === 'flex') {
+                hideValidationWarning();
+            }
+        });
+
+        // Close modal when clicking outside
+        warningModal.addEventListener('click', (e) => {
+            if (e.target === warningModal) {
+                hideValidationWarning();
+            }
+        });
+    </script>
+</body>
+
+</html>
